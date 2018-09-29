@@ -1,7 +1,6 @@
-*.i
-*.ii
-*.gpu
-*.ptx
-*.cubin
-*.fatbin
+*.o
+*.so
+.cproject
+.project
+/.settings/
 /.ptp-sync/

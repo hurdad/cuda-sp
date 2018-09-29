@@ -1,4 +1,6 @@
 
+#include <math.h>
+
 #ifndef CUDA_SPGRAM_CF_H_
 #define CUDA_SPGRAM_CF_H_
 
