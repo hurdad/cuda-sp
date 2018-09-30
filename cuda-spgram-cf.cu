@@ -43,19 +43,16 @@ CudaSpGramCF* CudaSpGramCF::create(unsigned int _nfft, int _wtype, unsigned int 
   checkCudaErrors(cudaMalloc((void**)&d_signal, _nfft * sizeof(cufftComplex)));
 
 
-  /*
   // create FFT arrays, object
-  q->buf_time = (TC*) malloc((q->nfft) * sizeof(TC));
-  q->buf_freq = (TC*) malloc((q->nfft) * sizeof(TC));
-  q->psd      = (T*) malloc((q->nfft) * sizeof(T ));
-  q->fft      = FFT_CREATE_PLAN(q->nfft, q->buf_time, q->buf_freq, FFT_DIR_FORWARD, FFT_METHOD);
+  q->buf_time.resize(q->nfft);
+  q->buf_freq.resize(q->nfft);
+  q->psd.resize(q->nfft);
+  checkCudaErrors(cufftPlan1d(&q->fft, q->nfft, CUFFT_C2C, 1));
 
   // create buffer
-  q->buffer = WINDOW(_create)(q->window_len);
+  //q->buffer = WINDOW(_create)(q->window_len);
 
-*/
   // create window
-  //q->w = (T*) malloc((q->window_len) * sizeof(T));
   q->w.resize(q->window_len);
   unsigned int i;
   unsigned int n = q->window_len;
@@ -113,7 +110,6 @@ CudaSpGramCF* CudaSpGramCF::create(unsigned int _nfft, int _wtype, unsigned int 
 
   // return new object
   return q;
-
 }
 
 CudaSpGramCF* CudaSpGramCF::create_default(unsigned int _nfft) {
@@ -127,7 +123,8 @@ CudaSpGramCF* CudaSpGramCF::create_default(unsigned int _nfft) {
 }
 
 CudaSpGramCF::~CudaSpGramCF() {
-
+  w.clear();
+  psd.clear();
 }
 
 void CudaSpGramCF::clear() {
@@ -142,12 +139,16 @@ void CudaSpGramCF::clear() {
   num_samples    = 0;
 
   // clear PSD accumulation
-//  for (i = 0; i < _q->nfft; i++)
-  //  _q->psd[i] = 0.0f;
+  for (i = 0; i < nfft; i++)
+    psd[i] = 0.0f;
 }
 
 void CudaSpGramCF::reset() {
+  // reset spgram object except for the window buffer
+  this->clear();
 
+  // clear the window buffer
+  //  WINDOW(_reset)(_q->buffer);
 }
 
 void CudaSpGramCF::print() {
@@ -218,8 +219,13 @@ uint64_t CudaSpGramCF::get_num_transforms_total() {
 }
 
 void CudaSpGramCF::push(cufftComplex x) {
+  // if buffer is full we need to pop
+  if(buffer.size() == window_len) {
+    buffer.pop();
+  }
+
   // push sample into internal window
-  //   WINDOW(_push)(_q->buffer, _x);
+  buffer.push(x);
 
   // update counters
   num_samples++;
@@ -241,30 +247,40 @@ void CudaSpGramCF::write(cufftComplex* _x, size_t _n) {
 }
 
 void CudaSpGramCF::step() {
-  unsigned int i;
-  /*
-  	    // read buffer, copy to FFT input (applying window)
-  	    // TODO: use SIMD extensions to speed this up
-  	    TI * rc;
-  	    //WINDOW(_read)(_q->buffer, &rc);
-  	    for (i=0; i<_q->window_len; i++)
-  	        _q->buf_time[i] = rc[i] * _q->w[i];
+	 unsigned int i;
 
-  	    // execute fft on _q->buf_time and store result in _q->buf_freq
-  	   // FFT_EXECUTE(_q->fft);
+  // read buffer, copy to FFT input (applying window)
+	for(i=0; i<window_len; i++){
+	//	cufftComplex t = buffer[i];
+ // for(auto it = buffer.begin(); it != buffer.end(); ++it){
+ //   std::cout << *it << "\n";
 
-  	    // accumulate output
-  	    // TODO: vectorize this operation
-  	    for (i=0; i<_q->nfft; i++) {
-  	        T v = crealf( _q->buf_freq[i] * conjf(_q->buf_freq[i]) );
-  	        if (_q->num_transforms == 0)
-  	            _q->psd[i] = v;
-  	        else
-  	            _q->psd[i] = _q->gamma*_q->psd[i] + _q->alpha*v;
-  	    }
-  */
-  num_transforms++;
-  num_transforms_total++;
+
+  }
+
+/*
+	    // read buffer, copy to FFT input (applying window)
+	    // TODO: use SIMD extensions to speed this up
+	    TI * rc;
+	    //WINDOW(_read)(_q->buffer, &rc);
+	    for (i=0; i<_q->window_len; i++)
+	        _q->buf_time[i] = rc[i] * _q->w[i];
+
+	    // execute fft on _q->buf_time and store result in _q->buf_freq
+	   // FFT_EXECUTE(_q->fft);
+
+	    // accumulate output
+	    // TODO: vectorize this operation
+	    for (i=0; i<_q->nfft; i++) {
+	        T v = crealf( _q->buf_freq[i] * conjf(_q->buf_freq[i]) );
+	        if (_q->num_transforms == 0)
+	            _q->psd[i] = v;
+	        else
+	            _q->psd[i] = _q->gamma*_q->psd[i] + _q->alpha*v;
+	    }
+*/
+num_transforms++;
+num_transforms_total++;
 }
 
 void CudaSpGramCF::get_psd(cufftComplex* _X) {

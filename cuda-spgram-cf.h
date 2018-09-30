@@ -3,7 +3,10 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdint.h>
+
+// std data structures
 #include <vector>
+#include <queue>
 
 // liquid dsp (fft window)
 #include <liquid/liquid.h>
@@ -109,14 +112,15 @@ class CudaSpGramCF {
   float           gamma;          // spectrum smoothing filter: feedback parameter
   int             accumulate;     // accumulate? or use time-average
 
-  //	WINDOW()        buffer;         // input buffer
-  //	TC *            buf_time;       // pointer to input array (allocated)
-  //	TC *            buf_freq;       // output fft (allocated)
- 	std::vector<float>         w;              // tapering window [size: window_len x 1]
+  std::queue<cufftComplex> 	buffer; 	// input buffer
+  std::vector<cufftComplex> buf_time;   // pointer to input array (allocated)
+  std::vector<cufftComplex> buf_freq;   // output fft (allocated)
+  std::vector<float>        w;          // tapering window [size: window_len x 1]
+  cufftHandle 				fft;		// FFT plan
   //	FFT_PLAN        fft;            // FFT plan
 
   // psd accumulation
-//	T *             psd;                    // accumulated power spectral density estimate (linear)
+  std::vector<float> psd;   			  // accumulated power spectral density estimate (linear)
   unsigned int    sample_timer;           // countdown to transform
   uint64_t        num_samples;            // total number of samples since reset
   uint64_t        num_samples_total;      // total number of samples since start
