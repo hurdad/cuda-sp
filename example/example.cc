@@ -3,6 +3,7 @@
 
 int main(int argc, char* argv[]) {
 
-	CudaSpGramCF test();
-
+  CudaSpGramCF* q = CudaSpGramCF::create_default(1024);
+  q->print();
+  delete q;
 }

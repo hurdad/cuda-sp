@@ -1,0 +1,6 @@
+--style=google
+--indent=spaces=2
+--align-reference=type
+--align-pointer=type
+--pad-oper
+--suffix=none
