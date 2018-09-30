@@ -4,7 +4,7 @@ NAME = cuda-spgram
 NVCC      := nvcc
 NVCCFLAGS :=
 NVCCFLAGS += -G
-NVCCFLAGS += --compiler-options '-fPIC  -I/usr/local/cuda/samples/common/inc'
+NVCCFLAGS += --compiler-options '-fPIC -I/usr/local/cuda/samples/common/inc'
 NVCCFLAGS += -gencode arch=compute_30,code=sm_30 \
              -gencode arch=compute_35,code=sm_35 \
              -gencode arch=compute_50,code=sm_50 \
@@ -29,7 +29,6 @@ example: library
 	LD_LIBRARY_PATH=./ \
 	./example/example
  
-
 clean:
 	rm -f lib$(NAME).so cuda-spgram-cf.o example/example
 	
