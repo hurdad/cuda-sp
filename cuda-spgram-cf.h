@@ -117,10 +117,10 @@ class CudaSpGramCF {
   float           gamma;          // spectrum smoothing filter: feedback parameter
   int             accumulate;     // accumulate? or use time-average
 
-  std::vector<liquid_float_complex> 	buffer; 	// input buffer
-  cufftComplex* 				buf_time;   // pointer to input array (allocated)
-  cufftComplex* 				d_buf_time;   // pointer to input device array (allocated)
-  cufftComplex*  				buf_freq;   // output fft (allocated)
+  windowcf      			buffer;     // input buffer
+  cufftComplex* 			buf_time;   // pointer to input array (allocated)
+  cufftComplex* 			d_buf_time; // pointer to input device array (allocated)
+  cufftComplex*  			buf_freq;   // output fft (allocated)
   std::vector<float>        w;          // tapering window [size: window_len x 1]
   //fftwf_plan 				fft;		// FFT plan
   cufftHandle 				fft;		// FFT plan

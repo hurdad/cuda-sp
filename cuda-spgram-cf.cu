@@ -2,6 +2,8 @@
 
 #include "cuda-spgram-cf.h"
 
+#include <iostream>
+
 CudaSpGramCF* CudaSpGramCF::create(unsigned int _nfft, int _wtype, unsigned int _window_len, unsigned int _delay) {
   // validate input
   if (_nfft < 2) {
@@ -45,7 +47,7 @@ CudaSpGramCF* CudaSpGramCF::create(unsigned int _nfft, int _wtype, unsigned int 
   checkCudaErrors(cufftPlan1d(&q->fft, q->nfft, CUFFT_C2C, 1));
 
   // create buffer
-  q->buffer.resize(q->window_len);
+  q->buffer = windowcf_create(q->window_len);
 
   // create window
   q->w.resize(q->window_len);
@@ -153,7 +155,7 @@ void CudaSpGramCF::reset() {
   this->clear();
 
   // clear the window buffer
-  buffer.clear();
+  windowcf_reset(buffer);
 }
 
 void CudaSpGramCF::print() {
@@ -223,14 +225,9 @@ uint64_t CudaSpGramCF::get_num_transforms_total() {
   return num_transforms_total;
 }
 
-void CudaSpGramCF::push(liquid_float_complex x) {
-  // if buffer is full we need to pop
-  if(buffer.size() == window_len) {
-    buffer.erase(buffer.begin());
-  }
-
+void CudaSpGramCF::push(liquid_float_complex _x) {
   // push sample into internal window
-  buffer.push_back(x);
+  windowcf_push(buffer, _x);
 
   // update counters
   num_samples++;
@@ -258,9 +255,12 @@ void CudaSpGramCF::step() {
   unsigned int i;
 
   // read buffer, copy to FFT input (applying window)
-  for(i = 0; i < window_len; i++) {
-    buf_time[i].x = buffer[i].real() * w[i];
-    buf_time[i].y = buffer[i].imag() * w[i];
+  // TODO: use SIMD extensions to speed this up
+  std::complex<float>* rc;
+  windowcf_read(buffer, &rc);
+  for (i = 0; i < window_len; i++) {
+    buf_time[i].x = rc[i].real() * w[i];
+    buf_time[i].y = rc[i].imag() * w[i];
   }
 
   //  copy host buff_time to device
