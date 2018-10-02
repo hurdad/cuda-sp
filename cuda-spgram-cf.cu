@@ -36,10 +36,13 @@ CudaSpGramCF* CudaSpGramCF::create(unsigned int _nfft, int _wtype, unsigned int 
   q->set_alpha(-1.0f);
 
   // create FFT arrays, object
-  q->buf_time = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * q->nfft);
-  q->buf_freq = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * q->nfft);
+  q->buf_time = (cufftComplex*)malloc(sizeof(cufftComplex) * q->nfft);
+  q->buf_freq = (cufftComplex*)malloc(sizeof(cufftComplex) * q->nfft);
+  checkCudaErrors(cudaMalloc((void**)&q->d_buf_time, sizeof(cufftComplex) * q->nfft));
   q->psd.resize(q->nfft);
-  q->fft = fftwf_plan_dft_1d(q->nfft, q->buf_time, q->buf_freq, FFTW_FORWARD, FFTW_ESTIMATE);
+
+  // init plan
+  checkCudaErrors(cufftPlan1d(&q->fft, q->nfft, CUFFT_C2C, 1));
 
   // create buffer
   q->buffer.resize(q->window_len);
@@ -119,19 +122,20 @@ CudaSpGramCF::~CudaSpGramCF() {
   // free allocated memory
   free(buf_time);
   free(buf_freq);
+  checkCudaErrors(cudaFree(d_buf_time));
 
   w.clear();
   psd.clear();
 
-  fftwf_destroy_plan(fft);
+  checkCudaErrors(cufftDestroy(fft));
 }
 
 void CudaSpGramCF::clear() {
   // clear FFT input
   unsigned int i;
   for (i = 0; i < nfft; i++) {
-    buf_time[i][REAL] = 0.0f;
-    buf_time[i][IMAG] = 0.0f;
+    buf_time[i].x = 0.0f;
+    buf_time[i].y = 0.0f;
   }
 
   // reset counters
@@ -255,18 +259,25 @@ void CudaSpGramCF::step() {
 
   // read buffer, copy to FFT input (applying window)
   for(i = 0; i < window_len; i++) {
-    buf_time[i][REAL] = buffer[i].real() * w[i];
-    buf_time[i][IMAG] = buffer[i].imag() * w[i];
+    buf_time[i].x = buffer[i].real() * w[i];
+    buf_time[i].y = buffer[i].imag() * w[i];
   }
 
-  // execute fft on buf_time and store result in buf_freq
-  fftwf_execute(fft);
+  //  copy host buff_time to device
+  checkCudaErrors(cudaMemcpy(d_buf_time, buf_time, sizeof(cufftComplex)* nfft, cudaMemcpyHostToDevice));
+
+  // execute fft on dev_buf_time and store inplace
+  //fftwf_execute(fft);
+  checkCudaErrors(cufftExecC2C(fft, (cufftComplex*)d_buf_time, (cufftComplex*)d_buf_time, CUFFT_FORWARD));
+
+  // Copy device dev_buf_time to host buf_freq
+  checkCudaErrors(cudaMemcpy(buf_freq, d_buf_time, sizeof(cufftComplex)* nfft, cudaMemcpyDeviceToHost));
 
   // accumulate output
   // TODO: vectorize this operation
   for (i = 0; i < nfft; i++) {
-    liquid_float_complex freq((float)buf_freq[i][REAL], (float)buf_freq[i][IMAG]);
-    liquid_float_complex confj((float)buf_freq[i][REAL], (float)buf_freq[i][IMAG] * -1);
+    liquid_float_complex freq((float)buf_freq[i].x, (float)buf_freq[i].y);
+    liquid_float_complex confj((float)buf_freq[i].x, (float)buf_freq[i].y * -1);
     liquid_float_complex t = freq * confj;
     float v = t.real();
     if (num_transforms == 0)

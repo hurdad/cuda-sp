@@ -9,8 +9,8 @@
 int main() {
 
   // spectral periodogram options
-  unsigned int nfft        =   1024;  // spectral periodogram FFT size
-  unsigned int num_samples =    2e6;  // number of samples
+  unsigned int nfft        =   131072;  // spectral periodogram FFT size
+  unsigned int num_samples =      1e6;  // number of samples
 
   unsigned int i;
 
@@ -18,6 +18,7 @@ int main() {
   CudaSpGramCF* q = CudaSpGramCF::create_default(nfft);
   q->print();
 
+  // start timer
   std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
 
   // generate signal
@@ -34,7 +35,7 @@ int main() {
   //  export as gnu plot
   q->export_gnuplot(OUTPUT_FILENAME);
 
-//  show statistics
+  //  show statistics
   std::cout << "duration ms: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t1).count() << std::endl;
   printf("total_num_samples : %" PRIu64 "\n", q->get_num_samples());
   printf("total_num_samples_total : %" PRIu64 "\n", q->get_num_samples());
