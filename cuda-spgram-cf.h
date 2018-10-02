@@ -3,21 +3,21 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdint.h>
-
-// std data structures
 #include <vector>
-#include <queue>
 
-// liquid dsp (fft window)
+// liquid dsp
+#include <complex>
 #include <liquid/liquid.h>
 
-//  cuda
-#include <cuda_runtime.h>
-#include <cufft.h>
-#include <helper_cuda.h>
+//  cuda fftw
+//#include <cufftw.h>
+#include <fftw3.h>
 
 #ifndef CUDA_SPGRAM_CF_H_
 #define CUDA_SPGRAM_CF_H_
+
+#define REAL 0
+#define IMAG 1
 
 class CudaSpGramCF {
  public:
@@ -76,12 +76,12 @@ class CudaSpGramCF {
 
   /// push a single sample into the CudaSpGramCF object
   //  _x      :   input sample
-  void push(cufftComplex _x);
+  void push(liquid_float_complex _x);
 
   // write a block of samples to the CudaSpGramCF object
   //  _x      :   input buffer [size: _n x 1]
   //  _n      :   input buffer length
-  void write(cufftComplex* _x, size_t _n);
+  void write(liquid_float_complex* _x, size_t _n);
 
   // compute spectral periodogram output from current buffer contents
   void step();
@@ -89,7 +89,7 @@ class CudaSpGramCF {
   // compute spectral periodogram output (fft-shifted values
   // in dB) from current buffer contents
   //  _X      :   output spectrum [size: _nfft x 1]
-  void get_psd(cufftComplex* _X);
+  void get_psd(float* _X);
 
   // export gnuplot file
   //  _filename : input buffer [size: _n x 1]
@@ -100,7 +100,7 @@ class CudaSpGramCF {
   //  _x      :   input signal [size: _n x 1]
   //  _n      :   input signal length
   //  _psd    :   output spectrum, [size: _nfft x 1]
-  static void estimate_psd(unsigned int _nfft, cufftComplex* _x, unsigned int _n, cufftComplex* _psd);
+  static void estimate_psd(unsigned int _nfft, liquid_float_complex* _x, unsigned int _n, float* _psd);
 
  private:
   // options
@@ -112,12 +112,11 @@ class CudaSpGramCF {
   float           gamma;          // spectrum smoothing filter: feedback parameter
   int             accumulate;     // accumulate? or use time-average
 
-  std::queue<cufftComplex> 	buffer; 	// input buffer
-  std::vector<cufftComplex> buf_time;   // pointer to input array (allocated)
-  std::vector<cufftComplex> buf_freq;   // output fft (allocated)
+  std::vector<liquid_float_complex> 	buffer; 	// input buffer
+  fftwf_complex* 				buf_time;   // pointer to input array (allocated)
+  fftwf_complex*  				buf_freq;   // output fft (allocated)
   std::vector<float>        w;          // tapering window [size: window_len x 1]
-  cufftHandle 				fft;		// FFT plan
-  //	FFT_PLAN        fft;            // FFT plan
+  fftwf_plan 				fft;		// FFT plan
 
   // psd accumulation
   std::vector<float> psd;   			  // accumulated power spectral density estimate (linear)

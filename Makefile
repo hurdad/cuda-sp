@@ -3,7 +3,7 @@ NAME = cuda-spgram
 # nvcc
 NVCC      := nvcc
 NVCCFLAGS :=
-NVCCFLAGS += -G
+NVCCFLAGS += -G -g
 NVCCFLAGS += --compiler-options '-fPIC -I/usr/local/cuda/samples/common/inc'
 NVCCFLAGS += -gencode arch=compute_30,code=sm_30 \
              -gencode arch=compute_35,code=sm_35 \
