@@ -212,7 +212,7 @@ uint64_t CudaSpGramCF::get_num_samples_total() {
 }
 
 uint64_t CudaSpGramCF::get_num_transforms() {
-  return num_samples_total;
+  return num_transforms;
 }
 
 uint64_t CudaSpGramCF::get_num_transforms_total() {

@@ -1,4 +1,4 @@
-// Copyright [2018] <Alexander Hurd>"
+// Copyright [2018] <Alexander Hurd>
 
 #include <stdio.h>
 #include <math.h>
@@ -10,8 +10,8 @@
 #include <liquid/liquid.h>
 
 //  cuda fftw
-//#include <cufftw.h>
-#include <fftw3.h>
+#include <cufftw.h>
+//#include <fftw3.h>
 
 #ifndef CUDA_SPGRAM_CF_H_
 #define CUDA_SPGRAM_CF_H_
