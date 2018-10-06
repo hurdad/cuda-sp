@@ -3,12 +3,9 @@ NAME = cuda-spgram
 # nvcc
 NVCC      := nvcc
 NVCCFLAGS :=
-NVCCFLAGS += -G -g
-NVCCFLAGS += --compiler-options '-fPIC -I/usr/local/cuda/samples/common/inc'
-NVCCFLAGS += -gencode arch=compute_30,code=sm_30 \
-             -gencode arch=compute_35,code=sm_35 \
-             -gencode arch=compute_50,code=sm_50 \
-             -gencode arch=compute_50,code=compute_50
+NVCCFLAGS += -G -g -m64
+NVCCFLAGS += --compiler-options '-O2 -fPIC -I/usr/local/cuda/samples/common/inc'
+NVCCFLAGS += -gencode arch=compute_30,code=sm_30 
 
 LIB_BUILD  = lib$(NAME).so
 LIBLINKER = $(CXX)

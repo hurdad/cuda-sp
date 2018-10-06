@@ -38,12 +38,15 @@ CudaSpGramCF* CudaSpGramCF::create(unsigned int _nfft, int _wtype, unsigned int 
   q->set_alpha(-1.0f);
 
   // create FFT arrays, object
+  //q->buf_time  = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * q->nfft);
+  //q->buf_freq  = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * q->nfft);
   q->buf_time = (cufftComplex*)malloc(sizeof(cufftComplex) * q->nfft);
   q->buf_freq = (cufftComplex*)malloc(sizeof(cufftComplex) * q->nfft);
   checkCudaErrors(cudaMalloc((void**)&q->d_buf_time, sizeof(cufftComplex) * q->nfft));
   q->psd.resize(q->nfft);
 
   // init plan
+  //q->fft = fftwf_plan_dft_1d(q->nfft, q->buf_time, q->buf_freq, FFTW_FORWARD, FFTW_ESTIMATE);
   checkCudaErrors(cufftPlan1d(&q->fft, q->nfft, CUFFT_C2C, 1));
 
   // create buffer
@@ -129,6 +132,7 @@ CudaSpGramCF::~CudaSpGramCF() {
   w.clear();
   psd.clear();
 
+  //fftwf_destroy_plan(fft);
   checkCudaErrors(cufftDestroy(fft));
 }
 
@@ -261,6 +265,9 @@ void CudaSpGramCF::step() {
   for (i = 0; i < window_len; i++) {
     buf_time[i].x = rc[i].real() * w[i];
     buf_time[i].y = rc[i].imag() * w[i];
+
+	//  buf_time[i][REAL] = rc[i].real() * w[i];
+	 // buf_time[i][IMAG] = rc[i].imag() * w[i];
   }
 
   //  copy host buff_time to device
@@ -276,10 +283,15 @@ void CudaSpGramCF::step() {
   // accumulate output
   // TODO: vectorize this operation
   for (i = 0; i < nfft; i++) {
-    liquid_float_complex freq((float)buf_freq[i].x, (float)buf_freq[i].y);
-    liquid_float_complex confj((float)buf_freq[i].x, (float)buf_freq[i].y * -1);
+	  liquid_float_complex freq((float)buf_freq[i].x, (float)buf_freq[i].y);
+     liquid_float_complex confj((float)buf_freq[i].x, (float)buf_freq[i].y * -1);
     liquid_float_complex t = freq * confj;
     float v = t.real();
+
+	//	liquid_float_complex freq((float)buf_freq[i][REAL], (float)buf_freq[i][IMAG]);
+	//	liquid_float_complex confj((float)buf_freq[i][REAL], (float)buf_freq[i][IMAG] * -1);
+	//	liquid_float_complex t = freq * confj;
+	  //   float v = t.real();
     if (num_transforms == 0)
       psd[i] = v;
     else
