@@ -9,10 +9,6 @@
 #include <complex>
 #include <liquid/liquid.h>
 
-//  cuda fftw
-//#include <cufftw.h>
-#include <fftw3.h>
-
 // cuda cufft
 #include <cuda_runtime.h>
 #include <cufft.h>
@@ -121,12 +117,8 @@ class CudaSpGramCF {
   cufftComplex* 			buf_time;   // pointer to input array (allocated)
   cufftComplex* 			d_buf_time; // pointer to input device array (allocated)
   cufftComplex*  			buf_freq;   // output fft (allocated)
-  //fftwf_complex* 			buf_time;   // pointer to input array (allocated)
-  //fftwf_complex*  			buf_freq;   // output fft (allocated)
   std::vector<float>        w;          // tapering window [size: window_len x 1]
-  //fftwf_plan 				fft;		// FFT plan
   cufftHandle 				fft;		// FFT plan
-
 
   // psd accumulation
   std::vector<float> psd;   			  // accumulated power spectral density estimate (linear)
