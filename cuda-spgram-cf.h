@@ -1,5 +1,8 @@
 // Copyright [2018] <Alexander Hurd>
 
+#ifndef CUDA_SPGRAM_CF_H_
+#define CUDA_SPGRAM_CF_H_
+
 #include <stdio.h>
 #include <math.h>
 #include <stdint.h>
@@ -13,12 +16,6 @@
 #include <cuda_runtime.h>
 #include <cufft.h>
 #include <helper_cuda.h>
-
-#ifndef CUDA_SPGRAM_CF_H_
-#define CUDA_SPGRAM_CF_H_
-
-#define REAL 0
-#define IMAG 1
 
 class CudaSpGramCF {
  public:

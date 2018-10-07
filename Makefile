@@ -1,4 +1,4 @@
-NAME = cuda-spgram
+NAME = cuda-sp
 
 # nvcc
 NVCC      := nvcc
@@ -15,19 +15,22 @@ all: library
 
 library: $(LIB_BUILD)
 
-$(LIB_BUILD): cuda-spgram-cf.o
-	$(LIBLINKER) $(LIB_LFLAGS) $(LIB_BUILD) cuda-spgram-cf.o
+$(LIB_BUILD): cuda-spgram-cf.o cuda-spwaterfall-cf.o
+	$(LIBLINKER) $(LIB_LFLAGS) $(LIB_BUILD) cuda-spgram-cf.o cuda-spwaterfall-cf.o
 	
 cuda-spgram-cf.o: cuda-spgram-cf.cu
 	$(NVCC) $< $(NVCCFLAGS) -c -o $@
+	
+cuda-spwaterfall-cf.o: cuda-spwaterfall-cf.cc
+	$(CXX) $< -c -o $@
   	
 example: library
 	$(MAKE) -C example/
 	LD_LIBRARY_PATH=./ \
-	./example/example
+	./example/spgram-example
  
 clean:
-	rm -f lib$(NAME).so cuda-spgram-cf.o example/example
+	rm -f lib$(NAME).so cuda-spgram-cf.o cuda-spwaterfall-cf.o example/example
 	
 format:
-	astyle --options=astyle.options cuda-spgram-cf.cu cuda-spgram-cf.h example/example.cc
+	astyle --options=astyle.options cuda-spgram-cf.cu cuda-spgram-cf.h cuda-spwaterfall-cf.cu cuda-spwaterfall-cf.h  example/example.cc
