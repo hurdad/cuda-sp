@@ -62,7 +62,7 @@ int main() {
   spgramcf_export_gnuplot(qq, LIQUID_OUTPUT_FILENAME);
 
   //  print duration
-  std::cout << "liquid spgram duration ms: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t4).count() << std::endl;
+  std::cout << "liquid spgram duration ms: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t2).count() << std::endl;
 
   //  print statistics
   printf("liquid spgram stats:\n");
