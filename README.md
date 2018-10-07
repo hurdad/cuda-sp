@@ -1,1 +1,1 @@
-# cuda-spgram
+# cuda spectral periodgram
