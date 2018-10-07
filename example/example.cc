@@ -12,7 +12,7 @@ int main() {
 
   // spectral periodogram options
   unsigned int nfft        =  	  1<<15;  // spectral periodogram FFT size
-  unsigned int num_samples =      100e6;  // number of samples
+  unsigned int num_samples =      10e6;  // number of samples
   float psd[nfft];                        // output
 
   // generate QPSK signal
@@ -94,7 +94,8 @@ int main() {
   printf("total_num_transforms : %" PRIu64 "\n", spgramcf_get_num_transforms(qq));
   printf("total_num_transforms_total : %" PRIu64 "\n", spgramcf_get_num_transforms_total(qq));
 
-  // destroy objecta
+  // destroy objects
+  msourcecf_destroy(gen);
   delete(y);
   delete(q);
   spgramcf_destroy(qq);
