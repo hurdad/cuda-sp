@@ -273,7 +273,6 @@ void CudaSpGramCF::step() {
   checkCudaErrors(cudaMemcpy(d_buf_time, buf_time, sizeof(cufftComplex)* nfft, cudaMemcpyHostToDevice));
 
   // execute fft on dev_buf_time and store inplace
-  //fftwf_execute(fft);
   checkCudaErrors(cufftExecC2C(fft, (cufftComplex*)d_buf_time, (cufftComplex*)d_buf_time, CUFFT_FORWARD));
 
   // Copy device dev_buf_time to host buf_freq

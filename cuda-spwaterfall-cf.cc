@@ -31,7 +31,6 @@ CudaSpWaterfallCF* CudaSpWaterfallCF::create(unsigned int _nfft,
   // allocate memory for main object
   CudaSpWaterfallCF* q = new CudaSpWaterfallCF();
 
-
   // set input parameters
   q->nfft         = _nfft;
   q->time         = _time;
@@ -45,7 +44,6 @@ CudaSpWaterfallCF* CudaSpWaterfallCF::create(unsigned int _nfft,
   //       'nfft' and 'time' to account for log-average consolidation each time
   //       the buffer gets filled
   q->psd.resize(2 * q->nfft * q->time);
-  //q->psd = (T*) malloc( 2 * q->nfft * q->time * sizeof(T));
 
   // create spectral periodogram object
   q->periodogram = CudaSpGramCF::create(_nfft, _wtype, _window_len, _delay);
@@ -79,7 +77,7 @@ CudaSpWaterfallCF::~CudaSpWaterfallCF() {
 }
 
 void CudaSpWaterfallCF::clear() {
-// memset(psd, 0x00, 2 * _q->nfft * _q->time * sizeof(T));
+  memset(psd.data(), 0x00, 2 * nfft * time * sizeof(float));
   index_time = 0;
 }
 
@@ -159,14 +157,11 @@ void CudaSpWaterfallCF::consolidate_buffer() {
   for (i = 0; i < time; i++) {
     for (k = 0; k < nfft; k++) {
       // compute median
-    	float v0 = psd[ (2 * i + 0) * nfft + k ];
-    	float v1  = psd[ (2 * i + 1) * nfft + k ];
-      //   T v0  = _q->psd[ (2 * i + 0) * _q->nfft + k ];
-      ///  T v1  = _q->psd[ (2 * i + 1) * _q->nfft + k ];
+      float v0 = psd[ (2 * i + 0) * nfft + k ];
+      float v1  = psd[ (2 * i + 1) * nfft + k ];
 
       // keep log average (only need double buffer for this, not triple buffer)
-    	psd[ i * nfft + k ] = logf(0.5f * (expf(v0) + expf(v1)));
-      //  _q->psd[ i * _q->nfft + k ] = logf(0.5f * (expf(v0) + expf(v1)));
+      psd[ i * nfft + k ] = logf(0.5f * (expf(v0) + expf(v1)));
     }
   }
 
