@@ -11,10 +11,9 @@
 int main() {
 
   // spectral periodogram options
-  unsigned int nfft        =  	  1 << 15; // spectral periodogram FFT size
+  unsigned int nfft        =  	  1 << 16; // spectral periodogram FFT size
   unsigned int time        =  	  	  250; // minimum time buffer
   unsigned int num_samples =         10e6; // number of samples
-  // float psd[nfft];                        // output
 
   // generate QPSK signal
   std::cout << "generating QPSK signal size : " << num_samples << std::endl;
@@ -41,7 +40,6 @@ int main() {
   // generate samples into y
   msourcecf_write_samples(gen, y->data(), num_samples);
 
-  /*
   // create cuda spectral waterfall
   CudaSpWaterfallCF* q = CudaSpWaterfallCF::create_default(nfft, time);
   //CudaSpWaterfallCF* q = CudaSpWaterfallCF::create(nfft, LIQUID_WINDOW_BLACKMANHARRIS7, nfft, nfft, time);
@@ -53,17 +51,14 @@ int main() {
   //  write IQ data to periodgram
   q->write(y->data(), num_samples);
 
-  //  populate output
-  //q->get_psd(psd);
-
   //  print write duration
   std::cout << "cuda-spwaterfall write duration ms: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t1).count() << std::endl;
 
   // export plot
   q->export_files(CUDA_OUTPUT_FILENAME);
-*/
+
   // create liquid spectral periodogram
-  spwaterfallcf qq = spwaterfallcf_create_default(nfft,time);
+  spwaterfallcf qq = spwaterfallcf_create_default(nfft, time);
   //spwaterfallcf qq = spwaterfallcf_create(nfft, LIQUID_WINDOW_BLACKMANHARRIS7, nfft, nfft, time);
   spwaterfallcf_print(qq);
 
@@ -74,7 +69,7 @@ int main() {
   spwaterfallcf_write(qq, y->data(), num_samples);
 
   //  print write duration
-  std::cout << "liquid spgram write duration ms: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t2).count() << std::endl;
+  std::cout << "liquid spwaterfall write duration ms: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t2).count() << std::endl;
 
   // export plot
   spwaterfallcf_export(qq, LIQUID_OUTPUT_FILENAME);
@@ -82,7 +77,7 @@ int main() {
   // destroy objects
   msourcecf_destroy(gen);
   delete(y);
- // delete(q);
+  delete(q);
   spwaterfallcf_destroy(qq);
 
   printf("done.\n");

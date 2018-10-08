@@ -31,6 +31,7 @@ CudaSpWaterfallCF* CudaSpWaterfallCF::create(unsigned int _nfft,
   // allocate memory for main object
   CudaSpWaterfallCF* q = new CudaSpWaterfallCF();
 
+
   // set input parameters
   q->nfft         = _nfft;
   q->time         = _time;
@@ -88,7 +89,7 @@ void CudaSpWaterfallCF::reset() {
 }
 
 void CudaSpWaterfallCF::print() {
-  printf("spwaterfall%s: nfft=%u, time=%u\n", nfft, time);
+  printf("CudaSpWaterfallCF: nfft=%u, time=%u\n", nfft, time);
 }
 
 int CudaSpWaterfallCF::set_freq(float _freq) {
@@ -127,17 +128,15 @@ void CudaSpWaterfallCF::write(liquid_float_complex* _x,
 }
 
 int CudaSpWaterfallCF::export_files(const char* _base) {
-  return export_bin(_base) + export_bin(_base);
+  return export_bin(_base) + export_gnu(_base);
 }
 
 void CudaSpWaterfallCF::step() {
   // determine if we need to extract PSD estimate from periodogram
   if (periodogram->get_num_transforms() >= rollover) {
-    //printf("index : %u\n", _q->index_time);
     // get PSD estimate from periodogram object, placing result in
     // proper location in internal buffer
-
-    //  periodogram->get_psd(psd + nfft * index_time);
+    periodogram->get_psd(psd.data() + nfft * index_time);
 
     // soft reset of internal state, counters
     periodogram->clear();
@@ -160,10 +159,13 @@ void CudaSpWaterfallCF::consolidate_buffer() {
   for (i = 0; i < time; i++) {
     for (k = 0; k < nfft; k++) {
       // compute median
+    	float v0 = psd[ (2 * i + 0) * nfft + k ];
+    	float v1  = psd[ (2 * i + 1) * nfft + k ];
       //   T v0  = _q->psd[ (2 * i + 0) * _q->nfft + k ];
       ///  T v1  = _q->psd[ (2 * i + 1) * _q->nfft + k ];
 
       // keep log average (only need double buffer for this, not triple buffer)
+    	psd[ i * nfft + k ] = logf(0.5f * (expf(v0) + expf(v1)));
       //  _q->psd[ i * _q->nfft + k ] = logf(0.5f * (expf(v0) + expf(v1)));
     }
   }

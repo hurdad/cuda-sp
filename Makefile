@@ -29,7 +29,7 @@ example: library
 	LD_LIBRARY_PATH=./ ./example/spwaterfall-example
  
 clean:
-	rm -f lib$(NAME).so cuda-spgram-cf.o cuda-spwaterfall-cf.o example/spgram-example *.gnu *.bin
+	rm -f lib$(NAME).so cuda-spgram-cf.o cuda-spwaterfall-cf.o example/spgram-example *.gnu *.bin *.png
 	
 format:
 	astyle --options=astyle.options cuda-spgram-cf.cu cuda-spgram-cf.h cuda-spwaterfall-cf.cc cuda-spwaterfall-cf.h example/spgram-example.cc
