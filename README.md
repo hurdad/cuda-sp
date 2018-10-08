@@ -6,7 +6,7 @@ cuda port of liquid-dsp spectral periodgram functions including waterfall
   - cuda
   - liquid-dsp
   
-## Run Example
+## Run Examples
 ```
 make example
 ```
