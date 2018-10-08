@@ -12,10 +12,8 @@
 #include <complex>
 #include <liquid/liquid.h>
 
-// cuda cufft
-#include <cuda_runtime.h>
+// cuda cufft for cufftComplex
 #include <cufft.h>
-#include <helper_cuda.h>
 
 class CudaSpGramCF {
  public:

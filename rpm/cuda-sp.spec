@@ -1,17 +1,18 @@
 Name:           cuda-sp
 Version:	%{VERSION}
 Release:        1%{?dist}
-Summary:        Cuda Spectral Periodgram Library
-License:        Apache2
+Summary:        CUDA Spectral Periodgram Library
+License:        Apache 2
 Group:          Development/Libraries/C and C++
 Url:            https://github.com/hurdad/cuda-sp
 Source:         %{name}-%{version}.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildRequires:  make
-BuildRequires:  gcc-c++
+Requires:	cuda-cufft-dev-10-0
+Requires:	cuda-cudart-10-0
 
 %description
-Cuda Spectral Periodgram Library
+CUDA Spectral Periodgram Library
 
 %package devel
 Summary:    Development headers and library for %{name}

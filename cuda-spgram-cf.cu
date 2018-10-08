@@ -2,6 +2,10 @@
 
 #include "cuda-spgram-cf.h"
 
+// cuda runtime
+#include <cuda_runtime.h>
+#include <helper_cuda.h>
+
 CudaSpGramCF* CudaSpGramCF::create(unsigned int _nfft,
                                    int _wtype,
                                    unsigned int _window_len,

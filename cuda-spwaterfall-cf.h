@@ -3,6 +3,9 @@
 #ifndef CUDA_SPWATERFALL_CF_H_
 #define CUDA_SPWATERFALL_CF_H_
 
+#include <stdlib.h>
+#include <string.h>
+
 #include "cuda-spgram-cf.h"
 
 class CudaSpWaterfallCF {
