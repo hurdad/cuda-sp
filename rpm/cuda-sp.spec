@@ -29,7 +29,7 @@ make %{?_smp_mflags}
 
 %install
 rm -rf $RPM_BUILD_ROOT
-make install DESTDIR=$RPM_BUILD_ROOT
+make install DESTDIR=$RPM_BUILD_ROOT/usr
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -47,8 +47,8 @@ ldconfig
 
 %files devel
 %defattr(-,root,root,-)
-
-%{_includedir}/%{name}/
+%{_includedir}/cuda-spgram-cf.h
+%{_includedir}/cuda-spwaterfall-cf.h
 
 %changelog
 
