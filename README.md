@@ -1,4 +1,4 @@
-# CUDA spectral periodgram
+# CUDA spectral periodgram library
 
 cuda port of liquid-dsp spectral periodgram functions including waterfall
 
