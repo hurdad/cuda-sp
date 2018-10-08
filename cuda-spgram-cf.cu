@@ -2,9 +2,10 @@
 
 #include "cuda-spgram-cf.h"
 
-#include <iostream>
-
-CudaSpGramCF* CudaSpGramCF::create(unsigned int _nfft, int _wtype, unsigned int _window_len, unsigned int _delay) {
+CudaSpGramCF* CudaSpGramCF::create(unsigned int _nfft,
+                                   int _wtype,
+                                   unsigned int _window_len,
+                                   unsigned int _delay) {
   // validate input
   if (_nfft < 2) {
     fprintf(stderr, "error: CudaSpGramCF::create(), fft size must be at least 2\n");
@@ -245,7 +246,8 @@ void CudaSpGramCF::push(liquid_float_complex _x) {
   this->step();
 }
 
-void CudaSpGramCF::write(liquid_float_complex* _x, size_t _n) {
+void CudaSpGramCF::write(liquid_float_complex* _x,
+                         size_t _n) {
   // TODO: be smarter about how to write and execute samples
   unsigned int i;
   for (i = 0; i < _n; i++)
@@ -276,7 +278,7 @@ void CudaSpGramCF::step() {
   // accumulate output
   // TODO: vectorize this operation
   for (i = 0; i < nfft; i++) {
-	liquid_float_complex freq((float)buf_freq[i].x, (float)buf_freq[i].y);
+    liquid_float_complex freq((float)buf_freq[i].x, (float)buf_freq[i].y);
     liquid_float_complex confj((float)buf_freq[i].x, (float)buf_freq[i].y * -1);
     liquid_float_complex t = freq * confj;
     float v = t.real();
@@ -350,7 +352,10 @@ int CudaSpGramCF::export_gnuplot(const char* _filename) {
   return 0;
 }
 
-void CudaSpGramCF::estimate_psd(unsigned int _nfft, liquid_float_complex* _x, unsigned int _n, float* _psd) {
+void CudaSpGramCF::estimate_psd(unsigned int _nfft,
+                                liquid_float_complex* _x,
+                                unsigned int _n,
+                                float* _psd) {
   // create object
   CudaSpGramCF* q = CudaSpGramCF::create_default(_nfft);
 

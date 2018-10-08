@@ -4,3 +4,6 @@
 .project
 /.settings/
 /.ptp-sync/
+*.bin
+*.gnu
+*.png

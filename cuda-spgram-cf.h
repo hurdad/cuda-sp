@@ -24,7 +24,10 @@ class CudaSpGramCF {
   //  _wtype      : window type, e.g. LIQUID_WINDOW_HAMMING
   //  _window_len : window length
   //  _delay      : delay between transforms, _delay > 0
-  static CudaSpGramCF* create(unsigned int _nfft, int _wtype, unsigned int _window_len, unsigned int _delay);
+  static CudaSpGramCF* create(unsigned int _nfft,
+                              int          _wtype,
+                              unsigned int _window_len,
+                              unsigned int _delay);
 
   // create default CudaSpGramCF object (Kaiser-Bessel window)
   static CudaSpGramCF* create_default(unsigned int _nfft);
@@ -79,7 +82,8 @@ class CudaSpGramCF {
   // write a block of samples to the CudaSpGramCF object
   //  _x      :   input buffer [size: _n x 1]
   //  _n      :   input buffer length
-  void write(liquid_float_complex* _x, size_t _n);
+  void write(liquid_float_complex* _x,
+             size_t _n);
 
   // compute spectral periodogram output from current buffer contents
   void step();
@@ -98,7 +102,10 @@ class CudaSpGramCF {
   //  _x      :   input signal [size: _n x 1]
   //  _n      :   input signal length
   //  _psd    :   output spectrum, [size: _nfft x 1]
-  static void estimate_psd(unsigned int _nfft, liquid_float_complex* _x, unsigned int _n, float* _psd);
+  static void estimate_psd(unsigned int _nfft,
+                           liquid_float_complex* _x,
+                           unsigned int _n,
+                           float* _psd);
 
  private:
   // options

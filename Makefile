@@ -2,7 +2,6 @@ NAME = cuda-sp
 
 # nvcc
 NVCC      := nvcc
-NVCCFLAGS :=
 NVCCFLAGS += -G -g -m64
 NVCCFLAGS += --compiler-options '-O2 -fPIC -I/usr/local/cuda/samples/common/inc'
 NVCCFLAGS += -gencode arch=compute_30,code=sm_30 
@@ -22,15 +21,15 @@ cuda-spgram-cf.o: cuda-spgram-cf.cu
 	$(NVCC) $< $(NVCCFLAGS) -c -o $@
 	
 cuda-spwaterfall-cf.o: cuda-spwaterfall-cf.cc
-	$(CXX) $< -c -o $@
+	$(NVCC) $< $(NVCCFLAGS) -c -o $@
   	
 example: library
 	$(MAKE) -C example/
-	LD_LIBRARY_PATH=./ \
-	./example/spgram-example
+	LD_LIBRARY_PATH=./ ./example/spgram-example
+	LD_LIBRARY_PATH=./ ./example/spwaterfall-example
  
 clean:
-	rm -f lib$(NAME).so cuda-spgram-cf.o cuda-spwaterfall-cf.o example/example
+	rm -f lib$(NAME).so cuda-spgram-cf.o cuda-spwaterfall-cf.o example/spgram-example *.gnu *.bin
 	
 format:
-	astyle --options=astyle.options cuda-spgram-cf.cu cuda-spgram-cf.h cuda-spwaterfall-cf.cu cuda-spwaterfall-cf.h  example/example.cc
+	astyle --options=astyle.options cuda-spgram-cf.cu cuda-spgram-cf.h cuda-spwaterfall-cf.cc cuda-spwaterfall-cf.h example/spgram-example.cc

@@ -1,19 +1,20 @@
 // Copyright [2018] <Alexander Hurd>
 
-#include <cuda-spgram-cf.h>
+#include <cuda-spwaterfall-cf.h>
 #include <liquid/liquid.h>
 #include <chrono>
 #include <iostream>
 
-#define CUDA_OUTPUT_FILENAME "cuda_spgramcf_example.gnu"
-#define LIQUID_OUTPUT_FILENAME "liquid_spgramcf_example.gnu"
+#define CUDA_OUTPUT_FILENAME "cuda_spwaterfallcf_example"
+#define LIQUID_OUTPUT_FILENAME "liquid_spwaterfallcf_example"
 
 int main() {
 
   // spectral periodogram options
   unsigned int nfft        =  	  1 << 15; // spectral periodogram FFT size
+  unsigned int time        =  	  	  250; // minimum time buffer
   unsigned int num_samples =         10e6; // number of samples
-  float psd[nfft];                         // output
+  // float psd[nfft];                        // output
 
   // generate QPSK signal
   std::cout << "generating QPSK signal size : " << num_samples << std::endl;
@@ -40,9 +41,10 @@ int main() {
   // generate samples into y
   msourcecf_write_samples(gen, y->data(), num_samples);
 
-  // create cuda spectral periodogram
-  //CudaSpGramCF* q = CudaSpGramCF::create_default(nfft);
-  CudaSpGramCF* q = CudaSpGramCF::create(nfft, LIQUID_WINDOW_BLACKMANHARRIS7, nfft, nfft);
+  /*
+  // create cuda spectral waterfall
+  CudaSpWaterfallCF* q = CudaSpWaterfallCF::create_default(nfft, time);
+  //CudaSpWaterfallCF* q = CudaSpWaterfallCF::create(nfft, LIQUID_WINDOW_BLACKMANHARRIS7, nfft, nfft, time);
   q->print();
 
   // start timer for cuda
@@ -52,53 +54,36 @@ int main() {
   q->write(y->data(), num_samples);
 
   //  populate output
-  q->get_psd(psd);
+  //q->get_psd(psd);
 
   //  print write duration
-  std::cout << "cuda-spgram write duration ms: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t1).count() << std::endl;
+  std::cout << "cuda-spwaterfall write duration ms: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t1).count() << std::endl;
 
   // export plot
-  q->export_gnuplot(CUDA_OUTPUT_FILENAME);
-
-  //  print statistics
-  printf("cuda spgram stats:\n");
-  printf("total_num_samples : %" PRIu64 "\n", q->get_num_samples());
-  printf("total_num_samples_total : %" PRIu64 "\n", q->get_num_samples());
-  printf("total_num_transforms : %" PRIu64 "\n", q->get_num_transforms());
-  printf("total_num_transforms_total : %" PRIu64 "\n", q->get_num_transforms_total());
-
+  q->export_files(CUDA_OUTPUT_FILENAME);
+*/
   // create liquid spectral periodogram
-  //spgramcf qq = spgramcf_create_default(nfft);
-  spgramcf qq = spgramcf_create(nfft, LIQUID_WINDOW_BLACKMANHARRIS7, nfft, nfft);
-  spgramcf_print(qq);
+  spwaterfallcf qq = spwaterfallcf_create_default(nfft,time);
+  //spwaterfallcf qq = spwaterfallcf_create(nfft, LIQUID_WINDOW_BLACKMANHARRIS7, nfft, nfft, time);
+  spwaterfallcf_print(qq);
 
   // start timer liquid
   std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
 
   //  write IQ data to periodgram
-  spgramcf_write(qq, y->data(), num_samples);
-
-  //  populate output
-  spgramcf_get_psd(qq, psd);
+  spwaterfallcf_write(qq, y->data(), num_samples);
 
   //  print write duration
   std::cout << "liquid spgram write duration ms: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t2).count() << std::endl;
 
   // export plot
-  spgramcf_export_gnuplot(qq, LIQUID_OUTPUT_FILENAME);
-
-  //  print statistics
-  printf("liquid spgram stats:\n");
-  printf("total_num_samples : %" PRIu64 "\n", spgramcf_get_num_samples(qq));
-  printf("total_num_samples_total : %" PRIu64 "\n", spgramcf_get_num_samples_total(qq));
-  printf("total_num_transforms : %" PRIu64 "\n", spgramcf_get_num_transforms(qq));
-  printf("total_num_transforms_total : %" PRIu64 "\n", spgramcf_get_num_transforms_total(qq));
+  spwaterfallcf_export(qq, LIQUID_OUTPUT_FILENAME);
 
   // destroy objects
   msourcecf_destroy(gen);
   delete(y);
-  delete(q);
-  spgramcf_destroy(qq);
+ // delete(q);
+  spwaterfallcf_destroy(qq);
 
   printf("done.\n");
   return 0;
