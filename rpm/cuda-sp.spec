@@ -9,7 +9,9 @@ Source:         %{name}-%{version}.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildRequires:  make
 Requires:	cuda-cufft-dev-10-0
-Requires:	cuda-cudart-10-0
+Requires:	cuda-cudart-dev-10-0
+Requires: 	cuda-misc-headers-10-0
+Requires: 	cuda-nvcc-10-0
 
 %description
 CUDA Spectral Periodgram Library
