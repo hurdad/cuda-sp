@@ -3,7 +3,7 @@
 cuda port of liquid-dsp spectral periodgram functions including waterfall
 
 ## Dependancies
-  - cuda
+  - cufft
   - liquid-dsp
   
 ## Run Examples
