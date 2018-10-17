@@ -1,6 +1,6 @@
 # CUDA spectral periodgram library
 
-cuda port of liquid-dsp spectral periodgram functions including waterfall
+cuda c++ port of liquid-dsp spectral periodgram functions including waterfall
 
 ## Dependancies
   - cufft
