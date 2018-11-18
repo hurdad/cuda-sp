@@ -41,8 +41,8 @@ int main() {
   msourcecf_write_samples(gen, y->data(), num_samples);
 
   // create cuda spectral waterfall
-  CudaSpWaterfallCF* q = CudaSpWaterfallCF::create_default(nfft, time);
-  //CudaSpWaterfallCF* q = CudaSpWaterfallCF::create(nfft, LIQUID_WINDOW_BLACKMANHARRIS7, nfft, nfft, time);
+  //CudaSpWaterfallCF* q = CudaSpWaterfallCF::create_default(nfft, time);
+  CudaSpWaterfallCF* q = CudaSpWaterfallCF::create(nfft, LIQUID_WINDOW_BLACKMANHARRIS7, nfft, nfft, time, CudaSpGramCF::DEVICE_MAPPED);
   q->print();
 
   // start timer for cuda

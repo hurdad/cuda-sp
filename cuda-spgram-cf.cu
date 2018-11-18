@@ -9,7 +9,8 @@
 CudaSpGramCF* CudaSpGramCF::create(unsigned int _nfft,
                                    int _wtype,
                                    unsigned int _window_len,
-                                   unsigned int _delay) {
+                                   unsigned int _delay,
+                                   CudaMemoryAPI_t _api) {
   // validate input
   if (_nfft < 2) {
     fprintf(stderr, "error: CudaSpGramCF::create(), fft size must be at least 2\n");
@@ -26,35 +27,45 @@ CudaSpGramCF* CudaSpGramCF::create(unsigned int _nfft,
   } else if (_delay == 0) {
     fprintf(stderr, "error: CudaSpGramCF::create(), delay must be greater than 0\n");
     exit(1);
+  } else if ((_api != CudaSpGramCF::DEVICE_MAPPED) && (_api != CudaSpGramCF::UNIFIED)) {
+    fprintf(stderr, "error: CudaSpGramCF::create(), api must be valid\n");
+    exit(1);
   }
 
-  // allocate memory for main object
+// allocate memory for main object
   CudaSpGramCF* q = new CudaSpGramCF();
 
-  // set input parameters
+// set input parameters
   q->nfft       = _nfft;
   q->wtype      = _wtype;
   q->window_len = _window_len;
   q->delay      = _delay;
+  q->api 		= _api;
   q->frequency  =  0;
   q->sample_rate = -1;
 
-  // set object for full accumulation
+// set object for full accumulation
   q->set_alpha(-1.0f);
 
-  // create FFT arrays, object
-  q->buf_time = (cufftComplex*)malloc(sizeof(cufftComplex) * q->nfft);
-  q->buf_freq = (cufftComplex*)malloc(sizeof(cufftComplex) * q->nfft);
-  checkCudaErrors(cudaMalloc((void**)&q->d_buf_time, sizeof(cufftComplex) * q->nfft));
+// create cuda FFT arrays, object
+  if(q->api == DEVICE_MAPPED) {
+    q->buf_time = (cufftComplex*)malloc(sizeof(cufftComplex) * q->nfft);
+    q->buf_freq = (cufftComplex*)malloc(sizeof(cufftComplex) * q->nfft);
+    checkCudaErrors(cudaMalloc((void**)&q->d_buf_time, sizeof(cufftComplex) * q->nfft));
+  }
+  if(q->api == UNIFIED) {
+    checkCudaErrors(cudaMallocManaged(&q->buf_time, sizeof(cufftComplex) * q->nfft));
+    checkCudaErrors(cudaMallocManaged(&q->buf_freq, sizeof(cufftComplex) * q->nfft));
+  }
   q->psd.resize(q->nfft);
 
-  // init plan
+// init plan
   checkCudaErrors(cufftPlan1d(&q->fft, q->nfft, CUFFT_C2C, 1));
 
-  // create buffer
+// create buffer
   q->buffer = windowcf_create(q->window_len);
 
-  // create window
+// create window
   q->w.resize(q->window_len);
   unsigned int i;
   unsigned int n = q->window_len;
@@ -95,22 +106,22 @@ CudaSpGramCF* CudaSpGramCF::create(unsigned int _nfft,
     }
   }
 
-  // scale by window magnitude, FFT size
+// scale by window magnitude, FFT size
   float g = 0.0f;
   for (i = 0; i < q->window_len; i++)
     g += q->w[i] * q->w[i];
   g = M_SQRT2 / ( sqrtf(g / q->window_len) * sqrtf((float)(q->nfft)) );
 
-  // scale window and copy
+// scale window and copy
   for (i = 0; i < q->window_len; i++)
     q->w[i] = g * q->w[i];
 
-  // reset the object
+// reset the object
   q->num_samples_total    = 0;
   q->num_transforms_total = 0;
   q->reset();
 
-  // return new object
+// return new object
   return q;
 }
 
@@ -121,7 +132,7 @@ CudaSpGramCF* CudaSpGramCF::create_default(unsigned int _nfft) {
     exit(1);
   }
 
-  return CudaSpGramCF::create(_nfft, LIQUID_WINDOW_KAISER, _nfft / 2, _nfft / 4);
+  return CudaSpGramCF::create(_nfft, LIQUID_WINDOW_KAISER, _nfft / 2, _nfft / 4, DEVICE_MAPPED);
 }
 
 CudaSpGramCF::~CudaSpGramCF() {
@@ -269,14 +280,21 @@ void CudaSpGramCF::step() {
     buf_time[i].y = rc[i].imag() * w[i];
   }
 
-  //  copy host buff_time to device
-  checkCudaErrors(cudaMemcpy(d_buf_time, buf_time, sizeof(cufftComplex)* nfft, cudaMemcpyHostToDevice));
+  if(api == DEVICE_MAPPED) {
+    //  copy host buff_time to device
+    checkCudaErrors(cudaMemcpy(d_buf_time, buf_time, sizeof(cufftComplex)* nfft, cudaMemcpyHostToDevice));
 
-  // execute fft on dev_buf_time and store inplace
-  checkCudaErrors(cufftExecC2C(fft, (cufftComplex*)d_buf_time, (cufftComplex*)d_buf_time, CUFFT_FORWARD));
+    // execute fft on dev_buf_time and store inplace
+    checkCudaErrors(cufftExecC2C(fft, (cufftComplex*)d_buf_time, (cufftComplex*)d_buf_time, CUFFT_FORWARD));
 
-  // Copy device dev_buf_time to host buf_freq
-  checkCudaErrors(cudaMemcpy(buf_freq, d_buf_time, sizeof(cufftComplex)* nfft, cudaMemcpyDeviceToHost));
+    // Copy device dev_buf_time to host buf_freq
+    checkCudaErrors(cudaMemcpy(buf_freq, d_buf_time, sizeof(cufftComplex)* nfft, cudaMemcpyDeviceToHost));
+  }
+
+  if(api == UNIFIED) {
+    // execute fft on buf_time and store in buf_freq
+    checkCudaErrors(cufftExecC2C(fft, (cufftComplex*)buf_time, (cufftComplex*)buf_freq, CUFFT_FORWARD));
+  }
 
   // accumulate output
   // TODO: vectorize this operation

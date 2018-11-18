@@ -6,7 +6,8 @@ CudaSpWaterfallCF* CudaSpWaterfallCF::create(unsigned int _nfft,
     int          _wtype,
     unsigned int _window_len,
     unsigned int _delay,
-    unsigned int _time) {
+    unsigned int _time,
+    CudaSpGramCF::CudaMemoryAPI_t _api) {
   // validate input
   if (_nfft < 2) {
     fprintf(stderr, "error: CudaSpWaterfallCF::create(), fft size must be at least 2\n");
@@ -26,12 +27,15 @@ CudaSpWaterfallCF* CudaSpWaterfallCF::create(unsigned int _nfft,
   } else if (_time == 0) {
     fprintf(stderr, "error: CudaSpWaterfallCF::create(), time must be greater than 0\n");
     exit(1);
+  } else if ((_api != CudaSpGramCF::DEVICE_MAPPED) && (_api != CudaSpGramCF::UNIFIED)) {
+    fprintf(stderr, "error: CudaSpWaterfallCF::create(), api must be valid\n");
+    exit(1);
   }
 
-  // allocate memory for main object
+// allocate memory for main object
   CudaSpWaterfallCF* q = new CudaSpWaterfallCF();
 
-  // set input parameters
+// set input parameters
   q->nfft         = _nfft;
   q->time         = _time;
   q->frequency    =  0;
@@ -39,19 +43,19 @@ CudaSpWaterfallCF* CudaSpWaterfallCF::create(unsigned int _nfft,
   q->width        = 800;
   q->height       = 800;
 
-  // create buffer to hold aggregated power spectral density
-  // NOTE: the buffer is two-dimensional time/frequency grid that is two times
-  //       'nfft' and 'time' to account for log-average consolidation each time
-  //       the buffer gets filled
+// create buffer to hold aggregated power spectral density
+// NOTE: the buffer is two-dimensional time/frequency grid that is two times
+//       'nfft' and 'time' to account for log-average consolidation each time
+//       the buffer gets filled
   q->psd.resize(2 * q->nfft * q->time);
 
-  // create spectral periodogram object
-  q->periodogram = CudaSpGramCF::create(_nfft, _wtype, _window_len, _delay);
+// create spectral periodogram object
+  q->periodogram = CudaSpGramCF::create(_nfft, _wtype, _window_len, _delay, _api);
 
-  // reset the object
+// reset the object
   q->reset();
 
-  // return new object
+// return new object
   return q;
 }
 
@@ -65,7 +69,7 @@ CudaSpWaterfallCF* CudaSpWaterfallCF::create_default(unsigned int _nfft, unsigne
     exit(1);
   }
 
-  return CudaSpWaterfallCF::create(_nfft, LIQUID_WINDOW_KAISER, _nfft / 2, _nfft / 4, _time);
+  return CudaSpWaterfallCF::create(_nfft, LIQUID_WINDOW_KAISER, _nfft / 2, _nfft / 4, _time, CudaSpGramCF::DEVICE_MAPPED);
 }
 
 CudaSpWaterfallCF::~CudaSpWaterfallCF() {

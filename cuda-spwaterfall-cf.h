@@ -19,7 +19,8 @@ class CudaSpWaterfallCF {
                                    int          _wtype,
                                    unsigned int _window_len,
                                    unsigned int _delay,
-                                   unsigned int _time);
+                                   unsigned int _time,
+                                   CudaSpGramCF::CudaMemoryAPI_t _api);
 
   // create default spwaterfall object (Kaiser-Bessel window)
   static CudaSpWaterfallCF* create_default(unsigned int _nfft, unsigned int _time);
