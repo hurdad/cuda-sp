@@ -12,7 +12,7 @@ int main() {
 
   // spectral periodogram options
   unsigned int nfft        =  	  1 << 15; // spectral periodogram FFT size
-  unsigned int num_samples =         10e6; // number of samples
+  unsigned int num_samples =         1e6; // number of samples
   float psd[nfft];                         // output
 
   // generate QPSK signal
