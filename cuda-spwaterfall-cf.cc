@@ -233,7 +233,7 @@ int CudaSpWaterfallCF::export_gnu(const char* _base) {
   uint64_t total_samples = periodogram->get_num_samples_total();
   char units  = ' ';
   float scale = 1.0f;
-  liquid_get_scale((float)total_samples / 4, &units, &scale);
+  //liquid_get_scale((float)total_samples / 4, &units, &scale);
 
   fprintf(fid, "#!/usr/bin/gnuplot\n");
   fprintf(fid, "reset\n");
@@ -270,7 +270,7 @@ int CudaSpWaterfallCF::export_gnu(const char* _base) {
     char unit;
     float g = 1.0f;
     float f_hi = frequency + 0.5f * sample_rate; // highest frequency
-    liquid_get_scale(f_hi / 2, &unit, &g);
+    //liquid_get_scale(f_hi / 2, &unit, &g);
     fprintf(fid, "set xlabel 'Frequency [%cHz]'\n", unit);
     // target xtics spacing roughly every 60-80 pixels
     float xn = ((float) width * 0.8f) / 70.0f;  // rough number of tics

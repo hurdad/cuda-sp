@@ -75,9 +75,9 @@ int main() {
   std::cout << "liquid spwaterfall write duration ms: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t2).count() << std::endl;
 
   // export plot
-  spwaterfallcf_set_rate(qq, 100e6);
-  spwaterfallcf_set_freq(qq, 750e6);
-  spwaterfallcf_set_dims(qq, 1200, 800);
+  //spwaterfallcf_set_rate(qq, 100e6);
+  //spwaterfallcf_set_freq(qq, 750e6);
+  //spwaterfallcf_set_dims(qq, 1200, 800);
   spwaterfallcf_export(qq, LIQUID_OUTPUT_FILENAME);
 
   // destroy objects
