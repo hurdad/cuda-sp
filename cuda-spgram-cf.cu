@@ -163,6 +163,9 @@ void CudaSpGramCF::clear() {
     buf_time[i].y = 0.0f;
   }
 
+  thrust::device_ptr<cufftComplex> d_buf_time_ptr = thrust::device_pointer_cast(d_buf_time);
+  thrust::generate(d_buf_time_ptr, d_buf_time_ptr + nfft, clear_cufftComplex());
+
   // reset counters
   sample_timer   = delay;
   num_transforms = 0;
@@ -358,7 +361,7 @@ int CudaSpGramCF::export_gnuplot(const char* _filename) {
   } else {
     char unit = ' ';
     float g = 1.0f;
-    liquid_get_scale(frequency, &unit, &g);
+    //liquid_get_scale(frequency, &unit, &g);
     fprintf(fid, "set xlabel 'Frequency [%cHz]'\n", unit);
     fprintf(fid, "set xrange [%f:%f]\n", g * (frequency - 0.5 * sample_rate), g * (frequency + 0.5 * sample_rate));
     fprintf(fid, "plot '-' u ($1*%f+%f):2 w %s lt 1 lw 2 lc rgb '#004080'\n",

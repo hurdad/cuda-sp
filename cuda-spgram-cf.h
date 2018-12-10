@@ -15,6 +15,9 @@
 // cuda cufft for cufftComplex
 #include <cufft.h>
 
+// cuda kernels
+#include "cuda-spgram-cf.hpp"
+
 class CudaSpGramCF {
  public:
   // cuda memory api to use
