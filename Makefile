@@ -4,7 +4,7 @@ DESTDIR = /usr/local
 # nvcc
 NVCC      := nvcc
 NVCCFLAGS += -G -g -m64
-NVCCFLAGS += --compiler-options '-O2 -fPIC -I/usr/local/cuda/samples/common/inc'
+NVCCFLAGS += --compiler-options '-O2 -fPIC -I/usr/local/cuda/samples/common/inc' --expt-relaxed-constexpr
 NVCCFLAGS += -gencode arch=compute_30,code=sm_30 
 
 LIB_BUILD  = lib$(NAME).so

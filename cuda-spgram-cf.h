@@ -127,7 +127,10 @@ class CudaSpGramCF {
   cufftComplex* 			buf_time;   // pointer to input array (allocated)
   cufftComplex* 			d_buf_time; // pointer to input device array (allocated)
   cufftComplex*  			buf_freq;   // output fft (allocated)
-  std::vector<float>        w;          // tapering window [size: window_len x 1]
+  std::vector<float>        w;      // tapering window [size: window_len x 1]
+  float*              		d_w;	// tapering window device
+
+  std::complex<float>* 		d_buffer;
   cufftHandle 				fft;		// FFT plan
 
   // psd accumulation

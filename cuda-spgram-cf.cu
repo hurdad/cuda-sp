@@ -116,6 +116,13 @@ CudaSpGramCF* CudaSpGramCF::create(unsigned int _nfft,
   for (i = 0; i < q->window_len; i++)
     q->w[i] = g * q->w[i];
 
+  //  allocate and copy window to device
+  checkCudaErrors(cudaMalloc((void**)&q->d_w, sizeof(float) * q->window_len));
+  checkCudaErrors(cudaMemcpy(q->d_w, q->w.data(), sizeof(float) * q->window_len, cudaMemcpyHostToDevice));
+
+  //  allocate d_buff
+  checkCudaErrors(cudaMalloc((void**)&q->d_buffer, sizeof(std::complex<float>) * q->window_len));
+
   // reset the object
   q->num_samples_total    = 0;
   q->num_transforms_total = 0;
@@ -149,9 +156,10 @@ CudaSpGramCF::~CudaSpGramCF() {
   }
 
   w.clear();
+  checkCudaErrors(cudaFree(d_w));
+  checkCudaErrors(cudaFree(d_buffer));
   psd.clear();
 
-  //fftwf_destroy_plan(fft);
   checkCudaErrors(cufftDestroy(fft));
 }
 
@@ -163,8 +171,10 @@ void CudaSpGramCF::clear() {
     buf_time[i].y = 0.0f;
   }
 
-  thrust::device_ptr<cufftComplex> d_buf_time_ptr = thrust::device_pointer_cast(d_buf_time);
-  thrust::generate(d_buf_time_ptr, d_buf_time_ptr + nfft, clear_cufftComplex());
+  if(api == DEVICE_MAPPED) {
+    thrust::device_ptr<cufftComplex> d_buf_time_ptr = thrust::device_pointer_cast(d_buf_time);
+    thrust::generate(d_buf_time_ptr, d_buf_time_ptr + nfft, clear_cufftComplex());
+  }
 
   // reset counters
   sample_timer   = delay;
@@ -284,14 +294,22 @@ void CudaSpGramCF::step() {
   // read buffer, copy to FFT input (applying window)
   std::complex<float>* rc;
   windowcf_read(buffer, &rc);
+ /*
   for (i = 0; i < window_len; i++) {
     buf_time[i].x = rc[i].real() * w[i];
     buf_time[i].y = rc[i].imag() * w[i];
-  }
+  }*/
+
+  checkCudaErrors(cudaMemcpy(d_buffer, rc, sizeof(std::complex<float>) * window_len, cudaMemcpyHostToDevice));
+  thrust::device_ptr<std::complex<float> > d_buffer_ptr = thrust::device_pointer_cast(d_buffer);
+  thrust::device_ptr<float> d_w_ptr = thrust::device_pointer_cast(d_w);
+  thrust::device_ptr<cufftComplex> d_buf_time_ptr = thrust::device_pointer_cast(d_buf_time);
+  thrust::transform(d_buffer_ptr, d_buffer_ptr + window_len, d_w_ptr, d_buf_time_ptr, apply_window());
+
 
   if(api == DEVICE_MAPPED) {
     //  copy host buff_time to device
-    checkCudaErrors(cudaMemcpy(d_buf_time, buf_time, sizeof(cufftComplex)* nfft, cudaMemcpyHostToDevice));
+    //checkCudaErrors(cudaMemcpy(d_buf_time, buf_time, sizeof(cufftComplex)* nfft, cudaMemcpyHostToDevice));
 
     // execute fft on dev_buf_time and store inplace
     checkCudaErrors(cufftExecC2C(fft, (cufftComplex*)d_buf_time, (cufftComplex*)d_buf_time, CUFFT_FORWARD));
