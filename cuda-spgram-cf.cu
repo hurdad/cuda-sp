@@ -294,11 +294,11 @@ void CudaSpGramCF::step() {
   // read buffer, copy to FFT input (applying window)
   std::complex<float>* rc;
   windowcf_read(buffer, &rc);
- /*
-  for (i = 0; i < window_len; i++) {
-    buf_time[i].x = rc[i].real() * w[i];
-    buf_time[i].y = rc[i].imag() * w[i];
-  }*/
+  /*
+   for (i = 0; i < window_len; i++) {
+     buf_time[i].x = rc[i].real() * w[i];
+     buf_time[i].y = rc[i].imag() * w[i];
+   }*/
 
   checkCudaErrors(cudaMemcpy(d_buffer, rc, sizeof(std::complex<float>) * window_len, cudaMemcpyHostToDevice));
   thrust::device_ptr<std::complex<float> > d_buffer_ptr = thrust::device_pointer_cast(d_buffer);

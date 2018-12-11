@@ -37,10 +37,10 @@ install: library
 	cp $(LIB_BUILD) $(DESTDIR)/lib64/
 	
 clean:
-	rm -f lib$(NAME).so cuda-spgram-cf.o cuda-spwaterfall-cf.o example/spgram-example *.gnu *.bin *.png
+	rm -f lib$(NAME).so cuda-spgram-cf.o cuda-spwaterfall-cf.o example/spgram-example example/spwaterfall-example *.gnu *.bin *.png
 	
 format:
-	astyle --options=astyle.options cuda-spgram-cf.cu cuda-spgram-cf.h cuda-spwaterfall-cf.cc cuda-spwaterfall-cf.h example/spgram-example.cc
+	astyle --options=astyle.options cuda-spgram-cf.cu cuda-spgram-cf.h cuda-spgram-cf.hpp cuda-spwaterfall-cf.cc cuda-spwaterfall-cf.h example/spgram-example.cc
 	
 rpm-build:
 	cd rpm && make
