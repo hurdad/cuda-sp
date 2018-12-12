@@ -42,8 +42,8 @@ int main() {
 
   // create cuda spectral periodogram
   //CudaSpGramCF* q = CudaSpGramCF::create_default(nfft);
-  //CudaSpGramCF* q = CudaSpGramCF::create(nfft, LIQUID_WINDOW_BLACKMANHARRIS7, nfft, nfft, CudaSpGramCF::DEVICE_MAPPED);
-  CudaSpGramCF* q = CudaSpGramCF::create(nfft, LIQUID_WINDOW_BLACKMANHARRIS7, nfft, nfft, CudaSpGramCF::UNIFIED);
+  CudaSpGramCF* q = CudaSpGramCF::create(nfft, LIQUID_WINDOW_BLACKMANHARRIS7, nfft, nfft, CudaSpGramCF::DEVICE_MAPPED);
+  //CudaSpGramCF* q = CudaSpGramCF::create(nfft, LIQUID_WINDOW_BLACKMANHARRIS7, nfft, nfft, CudaSpGramCF::UNIFIED);
   q->print();
 
   // start timer for cuda

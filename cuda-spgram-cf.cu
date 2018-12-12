@@ -2,6 +2,9 @@
 
 #include "cuda-spgram-cf.h"
 
+// cuda kernels
+#include "cuda-spgram-cf.cuh"
+
 // cuda runtime
 #include <cuda_runtime.h>
 #include <helper_cuda.h>
@@ -120,7 +123,7 @@ CudaSpGramCF* CudaSpGramCF::create(unsigned int _nfft,
   checkCudaErrors(cudaMalloc((void**)&q->d_w, sizeof(float) * q->window_len));
   checkCudaErrors(cudaMemcpy(q->d_w, q->w.data(), sizeof(float) * q->window_len, cudaMemcpyHostToDevice));
 
-  //  allocate d_buff
+  //  allocate d_buffer
   checkCudaErrors(cudaMalloc((void**)&q->d_buffer, sizeof(std::complex<float>) * q->window_len));
 
   // reset the object
@@ -291,25 +294,19 @@ void CudaSpGramCF::write(liquid_float_complex* _x,
 void CudaSpGramCF::step() {
   unsigned int i;
 
-  // read buffer, copy to FFT input (applying window)
+  // read buffer
   std::complex<float>* rc;
   windowcf_read(buffer, &rc);
-  /*
-   for (i = 0; i < window_len; i++) {
-     buf_time[i].x = rc[i].real() * w[i];
-     buf_time[i].y = rc[i].imag() * w[i];
-   }*/
-
-  checkCudaErrors(cudaMemcpy(d_buffer, rc, sizeof(std::complex<float>) * window_len, cudaMemcpyHostToDevice));
-  thrust::device_ptr<std::complex<float> > d_buffer_ptr = thrust::device_pointer_cast(d_buffer);
-  thrust::device_ptr<float> d_w_ptr = thrust::device_pointer_cast(d_w);
-  thrust::device_ptr<cufftComplex> d_buf_time_ptr = thrust::device_pointer_cast(d_buf_time);
-  thrust::transform(d_buffer_ptr, d_buffer_ptr + window_len, d_w_ptr, d_buf_time_ptr, apply_window());
-
 
   if(api == DEVICE_MAPPED) {
-    //  copy host buff_time to device
-    //checkCudaErrors(cudaMemcpy(d_buf_time, buf_time, sizeof(cufftComplex)* nfft, cudaMemcpyHostToDevice));
+    // copy windowcf buffer to gpu
+    checkCudaErrors(cudaMemcpy(d_buffer, rc, sizeof(std::complex<float>) * window_len, cudaMemcpyHostToDevice));
+
+    //apply window in gpu
+    thrust::device_ptr<std::complex<float> > d_buffer_ptr = thrust::device_pointer_cast(d_buffer);
+    thrust::device_ptr<float> d_w_ptr = thrust::device_pointer_cast(d_w);
+    thrust::device_ptr<cufftComplex> d_buf_time_ptr = thrust::device_pointer_cast(d_buf_time);
+    thrust::transform(d_buffer_ptr, d_buffer_ptr + window_len, d_w_ptr, d_buf_time_ptr, apply_window());
 
     // execute fft on dev_buf_time and store inplace
     checkCudaErrors(cufftExecC2C(fft, (cufftComplex*)d_buf_time, (cufftComplex*)d_buf_time, CUFFT_FORWARD));
@@ -319,6 +316,11 @@ void CudaSpGramCF::step() {
   }
 
   if(api == UNIFIED) {
+    //  apply window
+    for (i = 0; i < window_len; i++) {
+      buf_time[i].x = rc[i].real() * w[i];
+      buf_time[i].y = rc[i].imag() * w[i];
+    }
     // execute fft on buf_time and store in buf_freq
     checkCudaErrors(cufftExecC2C(fft, (cufftComplex*)buf_time, (cufftComplex*)buf_freq, CUFFT_FORWARD));
     cudaDeviceSynchronize();

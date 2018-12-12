@@ -15,9 +15,6 @@
 // cuda cufft for cufftComplex
 #include <cufft.h>
 
-// cuda kernels
-#include "cuda-spgram-cf.hpp"
-
 class CudaSpGramCF {
  public:
   // cuda memory api to use
@@ -124,13 +121,12 @@ class CudaSpGramCF {
   CudaMemoryAPI_t api;			  // cuda memory api to use
 
   windowcf      			buffer;     // input buffer
+  std::complex<float>* 		d_buffer;	//  input buffer device
   cufftComplex* 			buf_time;   // pointer to input array (allocated)
   cufftComplex* 			d_buf_time; // pointer to input device array (allocated)
   cufftComplex*  			buf_freq;   // output fft (allocated)
   std::vector<float>        w;      // tapering window [size: window_len x 1]
   float*              		d_w;	// tapering window device
-
-  std::complex<float>* 		d_buffer;
   cufftHandle 				fft;		// FFT plan
 
   // psd accumulation
