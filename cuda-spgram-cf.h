@@ -121,16 +121,19 @@ class CudaSpGramCF {
   CudaMemoryAPI_t api;			  // cuda memory api to use
 
   windowcf      			buffer;     // input buffer
-  std::complex<float>* 		d_buffer;	//  input buffer device
+  std::complex<float>* 		d_buffer;	// input buffer device
   cufftComplex* 			buf_time;   // pointer to input array (allocated)
   cufftComplex* 			d_buf_time; // pointer to input device array (allocated)
   cufftComplex*  			buf_freq;   // output fft (allocated)
-  std::vector<float>        w;      // tapering window [size: window_len x 1]
-  float*              		d_w;	// tapering window device
+  std::vector<float>        w;      	// tapering window [size: window_len x 1]
+  float*              		d_w;		// tapering window device
   cufftHandle 				fft;		// FFT plan
 
   // psd accumulation
-  std::vector<float> psd;   			  // accumulated power spectral density estimate (linear)
+  std::vector<float> 	psd;   			  // accumulated power spectral density estimate (linear)
+  float*				d_psd;			  // accumulated power spectral density estimate (linear) device
+  float*				d_psd_out;		  // compute magnitude in db and fft shifted on device
+  uint64_t*				d_index;		  // device index array (sequence)
   unsigned int    sample_timer;           // countdown to transform
   uint64_t        num_samples;            // total number of samples since reset
   uint64_t        num_samples_total;      // total number of samples since start

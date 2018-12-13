@@ -21,15 +21,17 @@ struct clear_cufftComplex {
   }
 };
 
+struct clear_float {
+  __host__   __device__ float operator()() {
+    return 0.0f;
+  }
+};
+
 struct apply_window {
   __host__  __device__ cufftComplex operator()(std::complex<float> s, float w) {
-    //   printf("%.6f - %.6f\n", s.real(), s.imag());
     cufftComplex v;
     v.x = s.real() * w;
     v.y = s.imag() * w;
-    //  printf("%.6f - %.6f : w  %.6f\n", s.real(), s.imag(), w);
-//   printf("%.6f - %.6f : w  %.6f\n", s.real(), s.imag(), w);
-    //  printf("%.6f - %.6f\n", v.x, v.y);
     return v;
   }
 };
@@ -52,5 +54,43 @@ struct printf_cufftComplex {
   }
 };
 
+struct first_psd {
+  cufftComplex* source_;
+  float* psd_;
+  first_psd(cufftComplex* source, float* psd):
+    source_(source), psd_(psd) {}
+  __host__  __device__ void operator()(const uint64_t i) {
+    cufftComplex s = source_[i];
+    float v = (s.x * s.x) + (s.y * s.y);
+    psd_[i] = v;
+  }
+};
+
+struct accumulate_psd {
+  cufftComplex* source_;
+  float* psd_;
+  float alpha_, gamma_;
+  accumulate_psd(cufftComplex* source, float* psd, float alpha, float gamma):
+    source_(source), psd_(psd), alpha_(alpha), gamma_(gamma) {}
+  __host__  __device__ void operator()(const uint64_t i) {
+    cufftComplex s = source_[i];
+    float v = (s.x * s.x) + (s.y * s.y);
+    psd_[i] = gamma_ * psd_[i] + alpha_ * v;
+  }
+};
+
+struct calc_power_and_shift {
+  float* psd_;
+  float* out_;
+  float scale_;
+  uint32_t nfft_;
+  calc_power_and_shift(float* psd, float* out, float scale, uint32_t nfft):
+    psd_(psd), out_(out), scale_(scale), nfft_(nfft) {}
+  __host__  __device__ void operator()(const uint64_t i) {
+    uint32_t nfft_2 = nfft_ / 2;
+    uint32_t k = (i + nfft_2) % nfft_;
+    out_[i] =  10 * log10f(psd_[k] + 1e-6f) + scale_;
+  }
+};
 
 #endif /* CUDA_SPGRAM_CF_HPP_ */

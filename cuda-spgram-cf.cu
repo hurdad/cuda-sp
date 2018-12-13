@@ -60,7 +60,11 @@ CudaSpGramCF* CudaSpGramCF::create(unsigned int _nfft,
     checkCudaErrors(cudaMallocManaged(&q->buf_time, sizeof(cufftComplex) * q->nfft));
     checkCudaErrors(cudaMallocManaged(&q->buf_freq, sizeof(cufftComplex) * q->nfft));
   }
+
+  // create psd that hold accumulated fft results
   q->psd.resize(q->nfft);
+  checkCudaErrors(cudaMalloc((void**)&q->d_psd, sizeof(float) * q->nfft));
+  checkCudaErrors(cudaMalloc((void**)&q->d_psd_out, sizeof(float) * q->nfft));
 
   // init plan
   checkCudaErrors(cufftPlan1d(&q->fft, q->nfft, CUFFT_C2C, 1));
@@ -124,7 +128,12 @@ CudaSpGramCF* CudaSpGramCF::create(unsigned int _nfft,
   checkCudaErrors(cudaMemcpy(q->d_w, q->w.data(), sizeof(float) * q->window_len, cudaMemcpyHostToDevice));
 
   //  allocate d_buffer
-  checkCudaErrors(cudaMalloc((void**)&q->d_buffer, sizeof(std::complex<float>) * q->window_len));
+  checkCudaErrors(cudaMalloc((void**)&q->d_buffer, sizeof(liquid_float_complex) * q->window_len));
+
+  // allocate d_index and sequence of size nfft
+  checkCudaErrors(cudaMalloc((void**)&q->d_index, sizeof(uint64_t) * q->nfft));
+  thrust::device_ptr<uint64_t> d_index_ptr = thrust::device_pointer_cast(q->d_index);
+  thrust::sequence(d_index_ptr, d_index_ptr + q->nfft);
 
   // reset the object
   q->num_samples_total    = 0;
@@ -162,6 +171,8 @@ CudaSpGramCF::~CudaSpGramCF() {
   checkCudaErrors(cudaFree(d_w));
   checkCudaErrors(cudaFree(d_buffer));
   psd.clear();
+  checkCudaErrors(cudaFree(d_psd));
+  checkCudaErrors(cudaFree(d_psd_out));
 
   checkCudaErrors(cufftDestroy(fft));
 }
@@ -187,6 +198,13 @@ void CudaSpGramCF::clear() {
   // clear PSD accumulation
   for (i = 0; i < nfft; i++)
     psd[i] = 0.0f;
+
+  if(api == DEVICE_MAPPED) {
+    thrust::device_ptr<float> d_psd_ptr = thrust::device_pointer_cast(d_psd);
+    thrust::generate(d_psd_ptr, d_psd_ptr + nfft, clear_float());
+    thrust::device_ptr<float> d_psd_out_ptr = thrust::device_pointer_cast(d_psd_out);
+    thrust::generate(d_psd_out_ptr, d_psd_out_ptr + nfft, clear_float());
+  }
 }
 
 void CudaSpGramCF::reset() {
@@ -295,24 +313,34 @@ void CudaSpGramCF::step() {
   unsigned int i;
 
   // read buffer
-  std::complex<float>* rc;
+  liquid_float_complex* rc;
   windowcf_read(buffer, &rc);
 
   if(api == DEVICE_MAPPED) {
     // copy windowcf buffer to gpu
-    checkCudaErrors(cudaMemcpy(d_buffer, rc, sizeof(std::complex<float>) * window_len, cudaMemcpyHostToDevice));
+    checkCudaErrors(cudaMemcpy(d_buffer, rc, sizeof(liquid_float_complex) * window_len, cudaMemcpyHostToDevice));
 
     //apply window in gpu
-    thrust::device_ptr<std::complex<float> > d_buffer_ptr = thrust::device_pointer_cast(d_buffer);
+    thrust::device_ptr<liquid_float_complex> d_buffer_ptr = thrust::device_pointer_cast(d_buffer);
     thrust::device_ptr<float> d_w_ptr = thrust::device_pointer_cast(d_w);
     thrust::device_ptr<cufftComplex> d_buf_time_ptr = thrust::device_pointer_cast(d_buf_time);
     thrust::transform(d_buffer_ptr, d_buffer_ptr + window_len, d_w_ptr, d_buf_time_ptr, apply_window());
 
-    // execute fft on dev_buf_time and store inplace
+    // execute fft on d_buf_time and store inplace
     checkCudaErrors(cufftExecC2C(fft, (cufftComplex*)d_buf_time, (cufftComplex*)d_buf_time, CUFFT_FORWARD));
 
     // Copy device dev_buf_time to host buf_freq
-    checkCudaErrors(cudaMemcpy(buf_freq, d_buf_time, sizeof(cufftComplex)* nfft, cudaMemcpyDeviceToHost));
+    //checkCudaErrors(cudaMemcpy(buf_freq, d_buf_time, sizeof(cufftComplex)* nfft, cudaMemcpyDeviceToHost));
+
+    //  accumulate output in gpu
+    thrust::device_ptr<uint64_t> d_index_ptr = thrust::device_pointer_cast(d_index);
+    if(num_transforms == 0) {
+      first_psd first_functor(d_buf_time, d_psd);
+      thrust::for_each(d_index_ptr, d_index_ptr + nfft, first_functor);
+    } else {
+      accumulate_psd accumulate_functor(d_buf_time, d_psd, alpha, gamma);
+      thrust::for_each(d_index_ptr, d_index_ptr + nfft, accumulate_functor);
+    }
   }
 
   if(api == UNIFIED) {
@@ -324,19 +352,18 @@ void CudaSpGramCF::step() {
     // execute fft on buf_time and store in buf_freq
     checkCudaErrors(cufftExecC2C(fft, (cufftComplex*)buf_time, (cufftComplex*)buf_freq, CUFFT_FORWARD));
     cudaDeviceSynchronize();
-  }
 
-  // accumulate output
-  // TODO: vectorize this operation
-  for (i = 0; i < nfft; i++) {
-    liquid_float_complex freq((float)buf_freq[i].x, (float)buf_freq[i].y);
-    liquid_float_complex confj((float)buf_freq[i].x, (float)buf_freq[i].y * -1);
-    liquid_float_complex t = freq * confj;
-    float v = t.real();
-    if (num_transforms == 0)
-      psd[i] = v;
-    else
-      psd[i] = gamma * psd[i] + alpha * v;
+    // accumulate output
+    for (i = 0; i < nfft; i++) {
+      liquid_float_complex freq((float)buf_freq[i].x, (float)buf_freq[i].y);
+      liquid_float_complex confj((float)buf_freq[i].x, (float)buf_freq[i].y * -1);
+      liquid_float_complex t = freq * confj;
+      float v = t.real();
+      if (num_transforms == 0)
+        psd[i] = v;
+      else
+        psd[i] = gamma * psd[i] + alpha * v;
+    }
   }
 
   num_transforms++;
@@ -345,13 +372,25 @@ void CudaSpGramCF::step() {
 
 void CudaSpGramCF::get_psd(float* _X) {
   // compute magnitude in dB and run FFT shift
-  unsigned int i;
-  unsigned int nfft_2 = nfft / 2;
   float scale = accumulate ? -10 * log10f(num_transforms) : 0.0f;
   // TODO: adjust scale if infinite integration
-  for (i = 0; i < nfft; i++) {
-    unsigned int k = (i + nfft_2) % nfft;
-    _X[i] = 10 * log10f(psd[k] + 1e-6f) + scale;
+
+  if(api == DEVICE_MAPPED) {
+    thrust::device_ptr<uint64_t> d_index_ptr = thrust::device_pointer_cast(d_index);
+    calc_power_and_shift calc_power_and_shift_functor(d_psd, d_psd_out, scale, nfft);
+    thrust::for_each(d_index_ptr, d_index_ptr + nfft, calc_power_and_shift_functor);
+
+    //copy from device to output
+    checkCudaErrors(cudaMemcpy(_X, d_psd_out, sizeof(float) * nfft, cudaMemcpyDeviceToHost));
+  }
+
+  if(api == UNIFIED) {
+    unsigned int i;
+    unsigned int nfft_2 = nfft / 2;
+    for (i = 0; i < nfft; i++) {
+      unsigned int k = (i + nfft_2) % nfft;
+      _X[i] = 10 * log10f(psd[k] + 1e-6f) + scale;
+    }
   }
 }
 
