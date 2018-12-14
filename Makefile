@@ -27,7 +27,11 @@ example: library
 	$(MAKE) -C example/
 	LD_LIBRARY_PATH=./ ./example/spgram-example
 	#LD_LIBRARY_PATH=./ ./example/spwaterfall-example
-	
+
+benchmark: library
+	$(MAKE) -C benchmark/
+	LD_LIBRARY_PATH=./ ./benchmark/spgram-benchmark
+
 install: library
 	mkdir -p $(DESTDIR)/include/
 	cp cuda-spgram-cf.h $(DESTDIR)/include/
@@ -36,10 +40,10 @@ install: library
 	cp $(LIB_BUILD) $(DESTDIR)/lib64/
 	
 clean:
-	rm -f lib$(NAME).so cuda-spgram-cf.o cuda-spwaterfall-cf.o example/spgram-example example/spwaterfall-example *.gnu *.bin *.png
+	rm -f lib$(NAME).so cuda-spgram-cf.o cuda-spwaterfall-cf.o example/spgram-example example/spwaterfall-example benchmark/spgram-benchmark *.gnu *.bin *.png
 	
 format:
-	astyle --options=astyle.options cuda-spgram-cf.cu cuda-spgram-cf.h cuda-spgram-cf.cuh cuda-spwaterfall-cf.cc cuda-spwaterfall-cf.h example/spgram-example.cc
+	astyle --options=astyle.options cuda-spgram-cf.cu cuda-spgram-cf.h cuda-spgram-cf.cuh cuda-spwaterfall-cf.cc cuda-spwaterfall-cf.h example/spgram-example.cc benchmark/spgram-benchmark.cc
 	
 rpm-build:
 	cd rpm && make
