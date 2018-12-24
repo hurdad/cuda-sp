@@ -2,12 +2,13 @@
 
 #include <vector>
 #include <string>
+#include <chrono>
 #include <complex>
 #include <liquid/liquid.h>
 
 #include "cuda-spgram-cf.h"
 
-#define DATA_MULTIPLIER (10)
+#define DATA_MULTIPLIER (20)
 
 void generate_signal(std::complex<float>* signal, const int N) {
   int i;
@@ -27,8 +28,19 @@ static void cuda_spgram(benchmark::State& state) {
   generate_signal(signal.data(), N * DATA_MULTIPLIER);
 
   for (auto _ : state) {
+	  //  Start iteration timer
+	     auto start = std::chrono::high_resolution_clock::now();
+
+
     //  write IQ data to periodgram
     q->write(signal.data(), N * DATA_MULTIPLIER);
+
+    //  Calculate elapsed time
+     auto elapsed_seconds = std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::high_resolution_clock::now() - start);
+
+     //  Set Iteration Time
+     state.SetIterationTime(elapsed_seconds.count());
+
   }
 
   delete(q);
@@ -39,7 +51,7 @@ static void cuda_spgram(benchmark::State& state) {
     static_cast<int64_t>(state.iterations()) * N * DATA_MULTIPLIER * sizeof(std::complex<float>));
   state.SetComplexityN(N);
 }
-BENCHMARK(cuda_spgram)->RangeMultiplier(2)->Range(1 << 10, 1 << 20)->Complexity();
+BENCHMARK(cuda_spgram)->RangeMultiplier(2)->Range(1 << 10, 1 << 20)->Complexity()->UseManualTime();
 
 static void liquid_spgram(benchmark::State& state) {
   int N = state.range(0);
