@@ -1,5 +1,6 @@
 name = cuda-sp
-version = 0.1
+version = 0.2
+release = 1
 full_name = $(name)-$(version)
 download_url = "https://github.com/hurdad/$(name)/archive/$(version).tar.gz"
 
@@ -29,4 +30,5 @@ rpm: download
 	  --define "_specdir %{_topdir}" \
 	  --define "_sourcedir  %{_topdir}/rpmbuild/SOURCES" \
 	  --define "VERSION $(version)" \
+	  --define "RELEASE $(release)" \
 	  -ba $(name).spec

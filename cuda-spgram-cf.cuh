@@ -28,7 +28,7 @@ struct clear_float {
 };
 
 struct apply_window {
-  __host__  __device__ cufftComplex operator()(std::complex<float> s, float w) {
+  __host__  __device__ cufftComplex operator()(liquid_float_complex s, float w) {
     cufftComplex v;
     v.x = s.real() * w;
     v.y = s.imag() * w;
@@ -37,7 +37,7 @@ struct apply_window {
 };
 
 struct printf_complex {
-  __host__ __device__ void operator()(std::complex<float> s) {
+  __host__ __device__ void operator()(liquid_float_complex s) {
     printf("%.6f - %.6f\n", s.real(), s.imag());
   }
 };

@@ -35,6 +35,7 @@ benchmark: library
 install: library
 	mkdir -p $(DESTDIR)/include/
 	cp cuda-spgram-cf.h $(DESTDIR)/include/
+	cp cuda-spgram-cf.cuh $(DESTDIR)/include/
 	cp cuda-spwaterfall-cf.h $(DESTDIR)/include/
 	mkdir -p $(DESTDIR)/lib64/
 	cp $(LIB_BUILD) $(DESTDIR)/lib64/
