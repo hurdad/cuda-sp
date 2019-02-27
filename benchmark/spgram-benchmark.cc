@@ -28,18 +28,18 @@ static void cuda_spgram(benchmark::State& state) {
   generate_signal(signal.data(), N * DATA_MULTIPLIER);
 
   for (auto _ : state) {
-	  //  Start iteration timer
-	     auto start = std::chrono::high_resolution_clock::now();
+    //  Start iteration timer
+    auto start = std::chrono::high_resolution_clock::now();
 
 
     //  write IQ data to periodgram
     q->write(signal.data(), N * DATA_MULTIPLIER);
 
     //  Calculate elapsed time
-     auto elapsed_seconds = std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::high_resolution_clock::now() - start);
+    auto elapsed_seconds = std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::high_resolution_clock::now() - start);
 
-     //  Set Iteration Time
-     state.SetIterationTime(elapsed_seconds.count());
+    //  Set Iteration Time
+    state.SetIterationTime(elapsed_seconds.count());
 
   }
 

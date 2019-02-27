@@ -128,7 +128,7 @@ CudaSpGramCF* CudaSpGramCF::create(unsigned int _nfft,
   checkCudaErrors(cudaMemcpy(q->d_w, q->w.data(), sizeof(float) * q->window_len, cudaMemcpyHostToDevice));
 
   //  allocate d_buffer
-  checkCudaErrors(cudaMalloc((void**)&q->d_buffer, sizeof(liquid_float_complex) * q->window_len));
+  checkCudaErrors(cudaMalloc((void**)&q->d_buffer, sizeof(std::complex<float>) * q->window_len));
 
   // allocate d_index and sequence of size nfft
   checkCudaErrors(cudaMalloc((void**)&q->d_index, sizeof(uint64_t) * q->nfft));
@@ -178,6 +178,7 @@ CudaSpGramCF::~CudaSpGramCF() {
 }
 
 void CudaSpGramCF::clear() {
+	std::cout << "Clear" << std::endl;
   // clear FFT input
   unsigned int i;
   for (i = 0; i < nfft; i++) {
@@ -282,7 +283,7 @@ uint64_t CudaSpGramCF::get_num_transforms_total() {
   return num_transforms_total;
 }
 
-void CudaSpGramCF::push(liquid_float_complex _x) {
+void CudaSpGramCF::push(std::complex<float> _x) {
   // push sample into internal window
   windowcf_push(buffer, _x);
 
@@ -301,7 +302,7 @@ void CudaSpGramCF::push(liquid_float_complex _x) {
   this->step();
 }
 
-void CudaSpGramCF::write(liquid_float_complex* _x,
+void CudaSpGramCF::write(std::complex<float>* _x,
                          size_t _n) {
   // TODO: be smarter about how to write and execute samples
   unsigned int i;
@@ -313,24 +314,23 @@ void CudaSpGramCF::step() {
   unsigned int i;
 
   // read buffer
-  liquid_float_complex* rc;
+  std::complex<float>* rc;
   windowcf_read(buffer, &rc);
 
   if(api == DEVICE_MAPPED) {
+    std::cout << "step " << rc[0] << std::endl;
     // copy windowcf buffer to gpu
-    checkCudaErrors(cudaMemcpy(d_buffer, rc, sizeof(liquid_float_complex) * window_len, cudaMemcpyHostToDevice));
+    checkCudaErrors(cudaMemcpy(d_buffer, rc, sizeof(std::complex<float>) * window_len, cudaMemcpyHostToDevice));
 
+    std::cout << "test " << std::endl;
     //apply window in gpu
-    thrust::device_ptr<liquid_float_complex> d_buffer_ptr = thrust::device_pointer_cast(d_buffer);
+    thrust::device_ptr<std::complex<float> > d_buffer_ptr = thrust::device_pointer_cast(d_buffer);
     thrust::device_ptr<float> d_w_ptr = thrust::device_pointer_cast(d_w);
     thrust::device_ptr<cufftComplex> d_buf_time_ptr = thrust::device_pointer_cast(d_buf_time);
     thrust::transform(d_buffer_ptr, d_buffer_ptr + window_len, d_w_ptr, d_buf_time_ptr, apply_window());
 
     // execute fft on d_buf_time and store inplace
     checkCudaErrors(cufftExecC2C(fft, (cufftComplex*)d_buf_time, (cufftComplex*)d_buf_time, CUFFT_FORWARD));
-
-    // Copy device dev_buf_time to host buf_freq
-    //checkCudaErrors(cudaMemcpy(buf_freq, d_buf_time, sizeof(cufftComplex)* nfft, cudaMemcpyDeviceToHost));
 
     //  accumulate output in gpu
     thrust::device_ptr<uint64_t> d_index_ptr = thrust::device_pointer_cast(d_index);
@@ -341,6 +341,8 @@ void CudaSpGramCF::step() {
       accumulate_psd accumulate_functor(d_buf_time, d_psd, alpha, gamma);
       thrust::for_each(d_index_ptr, d_index_ptr + nfft, accumulate_functor);
     }
+
+    std::cout << "test end" << std::endl;
   }
 
   if(api == UNIFIED) {
@@ -355,9 +357,9 @@ void CudaSpGramCF::step() {
 
     // accumulate output
     for (i = 0; i < nfft; i++) {
-      liquid_float_complex freq((float)buf_freq[i].x, (float)buf_freq[i].y);
-      liquid_float_complex confj((float)buf_freq[i].x, (float)buf_freq[i].y * -1);
-      liquid_float_complex t = freq * confj;
+      std::complex<float> freq((float)buf_freq[i].x, (float)buf_freq[i].y);
+      std::complex<float> confj((float)buf_freq[i].x, (float)buf_freq[i].y * -1);
+      std::complex<float> t = freq * confj;
       float v = t.real();
       if (num_transforms == 0)
         psd[i] = v;
@@ -371,6 +373,8 @@ void CudaSpGramCF::step() {
 }
 
 void CudaSpGramCF::get_psd(float* _X) {
+
+	std::cout << "get psd "<< std::endl;
   // compute magnitude in dB and run FFT shift
   float scale = accumulate ? -10 * log10f(num_transforms) : 0.0f;
   // TODO: adjust scale if infinite integration
@@ -443,7 +447,7 @@ int CudaSpGramCF::export_gnuplot(const char* _filename) {
 }
 
 void CudaSpGramCF::estimate_psd(unsigned int _nfft,
-                                liquid_float_complex* _x,
+                                std::complex<float>* _x,
                                 unsigned int _n,
                                 float* _psd) {
   // create object

@@ -1,7 +1,7 @@
 // Copyright [2018] <Alexander Hurd>
 
-#ifndef CUDA_SPGRAM_CF_HPP_
-#define CUDA_SPGRAM_CF_HPP_
+#ifndef CUDA_SPGRAM_CF_CUH_
+#define CUDA_SPGRAM_CF_CUH_
 
 // cuda cufft for cufftComplex
 #include <cufft.h>
@@ -28,7 +28,7 @@ struct clear_float {
 };
 
 struct apply_window {
-  __host__  __device__ cufftComplex operator()(liquid_float_complex s, float w) {
+  __host__  __device__ cufftComplex operator()(std::complex<float> s, float w) {
     cufftComplex v;
     v.x = s.real() * w;
     v.y = s.imag() * w;
@@ -37,7 +37,7 @@ struct apply_window {
 };
 
 struct printf_complex {
-  __host__ __device__ void operator()(liquid_float_complex s) {
+  __host__ __device__ void operator()(std::complex<float> s) {
     printf("%.6f - %.6f\n", s.real(), s.imag());
   }
 };
@@ -93,4 +93,4 @@ struct calc_power_and_shift {
   }
 };
 
-#endif /* CUDA_SPGRAM_CF_HPP_ */
+#endif /* CUDA_SPGRAM_CF_CUH_ */
