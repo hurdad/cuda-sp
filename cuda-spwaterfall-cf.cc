@@ -6,8 +6,7 @@ CudaSpWaterfallCF* CudaSpWaterfallCF::create(unsigned int _nfft,
     int          _wtype,
     unsigned int _window_len,
     unsigned int _delay,
-    unsigned int _time,
-    CudaSpGramCF::CudaMemoryAPI_t _api) {
+    unsigned int _time) {
   // validate input
   if (_nfft < 2) {
     fprintf(stderr, "error: CudaSpWaterfallCF::create(), fft size must be at least 2\n");
@@ -26,9 +25,6 @@ CudaSpWaterfallCF* CudaSpWaterfallCF::create(unsigned int _nfft,
     exit(1);
   } else if (_time == 0) {
     fprintf(stderr, "error: CudaSpWaterfallCF::create(), time must be greater than 0\n");
-    exit(1);
-  } else if ((_api != CudaSpGramCF::DEVICE_MAPPED) && (_api != CudaSpGramCF::UNIFIED)) {
-    fprintf(stderr, "error: CudaSpWaterfallCF::create(), api must be valid\n");
     exit(1);
   }
 
@@ -50,7 +46,7 @@ CudaSpWaterfallCF* CudaSpWaterfallCF::create(unsigned int _nfft,
   q->psd.resize(2 * q->nfft * q->time);
 
 // create spectral periodogram object
-  q->periodogram = CudaSpGramCF::create(_nfft, _wtype, _window_len, _delay, _api);
+  q->periodogram = CudaSpGramCF::create(_nfft, _wtype, _window_len, _delay);
 
 // reset the object
   q->reset();
@@ -69,7 +65,7 @@ CudaSpWaterfallCF* CudaSpWaterfallCF::create_default(unsigned int _nfft, unsigne
     exit(1);
   }
 
-  return CudaSpWaterfallCF::create(_nfft, LIQUID_WINDOW_KAISER, _nfft / 2, _nfft / 4, _time, CudaSpGramCF::DEVICE_MAPPED);
+  return CudaSpWaterfallCF::create(_nfft, LIQUID_WINDOW_KAISER, _nfft / 2, _nfft / 4, _time);
 }
 
 CudaSpWaterfallCF::~CudaSpWaterfallCF() {

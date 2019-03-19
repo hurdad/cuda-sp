@@ -12,8 +12,7 @@
 CudaSpGramCF* CudaSpGramCF::create(unsigned int _nfft,
                                    int _wtype,
                                    unsigned int _window_len,
-                                   unsigned int _delay,
-                                   CudaMemoryAPI_t _api) {
+                                   unsigned int _delay) {
   // validate input
   if (_nfft < 2) {
     fprintf(stderr, "error: CudaSpGramCF::create(), fft size must be at least 2\n");
@@ -30,9 +29,6 @@ CudaSpGramCF* CudaSpGramCF::create(unsigned int _nfft,
   } else if (_delay == 0) {
     fprintf(stderr, "error: CudaSpGramCF::create(), delay must be greater than 0\n");
     exit(1);
-  } else if ((_api != CudaSpGramCF::DEVICE_MAPPED) && (_api != CudaSpGramCF::UNIFIED)) {
-    fprintf(stderr, "error: CudaSpGramCF::create(), api must be valid\n");
-    exit(1);
   }
 
   // allocate memory for main object
@@ -43,23 +39,15 @@ CudaSpGramCF* CudaSpGramCF::create(unsigned int _nfft,
   q->wtype      = _wtype;
   q->window_len = _window_len;
   q->delay      = _delay;
-  q->api 		= _api;
   q->frequency  =  0;
   q->sample_rate = -1;
 
   // set object for full accumulation
   q->set_alpha(-1.0f);
 
-  // create cuda FFT arrays, object
-  if(q->api == DEVICE_MAPPED) {
-    q->buf_time = (cufftComplex*)malloc(sizeof(cufftComplex) * q->nfft);
-    q->buf_freq = (cufftComplex*)malloc(sizeof(cufftComplex) * q->nfft);
-    checkCudaErrors(cudaMalloc((void**)&q->d_buf_time, sizeof(cufftComplex) * q->nfft));
-  }
-  if(q->api == UNIFIED) {
-    checkCudaErrors(cudaMallocManaged(&q->buf_time, sizeof(cufftComplex) * q->nfft));
-    checkCudaErrors(cudaMallocManaged(&q->buf_freq, sizeof(cufftComplex) * q->nfft));
-  }
+  // create input cuda buffers on GPU
+  checkCudaErrors(cudaMalloc((void**)&q->d_buffer, sizeof(std::complex<float>) * q->window_len));
+  checkCudaErrors(cudaMalloc((void**)&q->d_buf_time, sizeof(cufftComplex) * q->nfft));
 
   // create psd that hold accumulated fft results
   q->psd.resize(q->nfft);
@@ -127,9 +115,6 @@ CudaSpGramCF* CudaSpGramCF::create(unsigned int _nfft,
   checkCudaErrors(cudaMalloc((void**)&q->d_w, sizeof(float) * q->window_len));
   checkCudaErrors(cudaMemcpy(q->d_w, q->w.data(), sizeof(float) * q->window_len, cudaMemcpyHostToDevice));
 
-  //  allocate d_buffer
-  checkCudaErrors(cudaMalloc((void**)&q->d_buffer, sizeof(std::complex<float>) * q->window_len));
-
   // allocate d_index and sequence of size nfft
   checkCudaErrors(cudaMalloc((void**)&q->d_index, sizeof(uint64_t) * q->nfft));
   thrust::device_ptr<uint64_t> d_index_ptr = thrust::device_pointer_cast(q->d_index);
@@ -151,45 +136,29 @@ CudaSpGramCF* CudaSpGramCF::create_default(unsigned int _nfft) {
     exit(1);
   }
 
-  return CudaSpGramCF::create(_nfft, LIQUID_WINDOW_KAISER, _nfft / 2, _nfft / 4, DEVICE_MAPPED);
+  return CudaSpGramCF::create(_nfft, LIQUID_WINDOW_KAISER, _nfft / 2, _nfft / 4);
 }
 
 CudaSpGramCF::~CudaSpGramCF() {
-  // free allocated memory
-  if(api == DEVICE_MAPPED) {
-    free(buf_time);
-    free(buf_freq);
-    checkCudaErrors(cudaFree(d_buf_time));
-  }
-
-  if(api == UNIFIED) {
-    checkCudaErrors(cudaFree(buf_time));
-    checkCudaErrors(cudaFree(buf_freq));
-  }
-
-  w.clear();
-  checkCudaErrors(cudaFree(d_w));
+  // free allocated memory on GPU
   checkCudaErrors(cudaFree(d_buffer));
-  psd.clear();
+  checkCudaErrors(cudaFree(d_buf_time));
+  checkCudaErrors(cudaFree(d_w));
   checkCudaErrors(cudaFree(d_psd));
   checkCudaErrors(cudaFree(d_psd_out));
+
+  w.clear();
+  psd.clear();
 
   checkCudaErrors(cufftDestroy(fft));
 }
 
 void CudaSpGramCF::clear() {
-	std::cout << "Clear" << std::endl;
-  // clear FFT input
-  unsigned int i;
-  for (i = 0; i < nfft; i++) {
-    buf_time[i].x = 0.0f;
-    buf_time[i].y = 0.0f;
-  }
+  thrust::device_ptr<liquid_float_complex> d_buffer_ptr = thrust::device_pointer_cast(d_buffer);
+  thrust::generate(d_buffer_ptr, d_buffer_ptr + window_len, clear_liquid_float_complex());
 
-  if(api == DEVICE_MAPPED) {
-    thrust::device_ptr<cufftComplex> d_buf_time_ptr = thrust::device_pointer_cast(d_buf_time);
-    thrust::generate(d_buf_time_ptr, d_buf_time_ptr + nfft, clear_cufftComplex());
-  }
+  thrust::device_ptr<cufftComplex> d_buf_time_ptr = thrust::device_pointer_cast(d_buf_time);
+  thrust::generate(d_buf_time_ptr, d_buf_time_ptr + nfft, clear_cufftComplex());
 
   // reset counters
   sample_timer   = delay;
@@ -197,15 +166,14 @@ void CudaSpGramCF::clear() {
   num_samples    = 0;
 
   // clear PSD accumulation
-  for (i = 0; i < nfft; i++)
+  for (size_t i = 0; i < nfft; i++)
     psd[i] = 0.0f;
 
-  if(api == DEVICE_MAPPED) {
-    thrust::device_ptr<float> d_psd_ptr = thrust::device_pointer_cast(d_psd);
-    thrust::generate(d_psd_ptr, d_psd_ptr + nfft, clear_float());
-    thrust::device_ptr<float> d_psd_out_ptr = thrust::device_pointer_cast(d_psd_out);
-    thrust::generate(d_psd_out_ptr, d_psd_out_ptr + nfft, clear_float());
-  }
+  thrust::device_ptr<float> d_psd_ptr = thrust::device_pointer_cast(d_psd);
+  thrust::generate(d_psd_ptr, d_psd_ptr + nfft, clear_float());
+  thrust::device_ptr<float> d_psd_out_ptr = thrust::device_pointer_cast(d_psd_out);
+  thrust::generate(d_psd_out_ptr, d_psd_out_ptr + nfft, clear_float());
+
 }
 
 void CudaSpGramCF::reset() {
@@ -314,58 +282,29 @@ void CudaSpGramCF::step() {
   unsigned int i;
 
   // read buffer
-  std::complex<float>* rc;
+  liquid_float_complex* rc;
   windowcf_read(buffer, &rc);
 
-  if(api == DEVICE_MAPPED) {
-    std::cout << "step " << rc[0] << std::endl;
-    // copy windowcf buffer to gpu
-    checkCudaErrors(cudaMemcpy(d_buffer, rc, sizeof(std::complex<float>) * window_len, cudaMemcpyHostToDevice));
+  // copy windowcf buffer to gpu
+  checkCudaErrors(cudaMemcpy(d_buffer, rc, sizeof(liquid_float_complex) * window_len, cudaMemcpyHostToDevice));
 
-    std::cout << "test " << std::endl;
-    //apply window in gpu
-    thrust::device_ptr<std::complex<float> > d_buffer_ptr = thrust::device_pointer_cast(d_buffer);
-    thrust::device_ptr<float> d_w_ptr = thrust::device_pointer_cast(d_w);
-    thrust::device_ptr<cufftComplex> d_buf_time_ptr = thrust::device_pointer_cast(d_buf_time);
-    thrust::transform(d_buffer_ptr, d_buffer_ptr + window_len, d_w_ptr, d_buf_time_ptr, apply_window());
+  //apply window in gpu
+  thrust::device_ptr<liquid_float_complex> d_buffer_ptr = thrust::device_pointer_cast(d_buffer);
+  thrust::device_ptr<float> d_w_ptr = thrust::device_pointer_cast(d_w);
+  thrust::device_ptr<cufftComplex> d_buf_time_ptr = thrust::device_pointer_cast(d_buf_time);
+  thrust::transform(d_buffer_ptr, d_buffer_ptr + window_len, d_w_ptr, d_buf_time_ptr, apply_window());
 
-    // execute fft on d_buf_time and store inplace
-    checkCudaErrors(cufftExecC2C(fft, (cufftComplex*)d_buf_time, (cufftComplex*)d_buf_time, CUFFT_FORWARD));
+  // execute fft on d_buf_time and store inplace
+  checkCudaErrors(cufftExecC2C(fft, (cufftComplex*)d_buf_time, (cufftComplex*)d_buf_time, CUFFT_FORWARD));
 
-    //  accumulate output in gpu
-    thrust::device_ptr<uint64_t> d_index_ptr = thrust::device_pointer_cast(d_index);
-    if(num_transforms == 0) {
-      first_psd first_functor(d_buf_time, d_psd);
-      thrust::for_each(d_index_ptr, d_index_ptr + nfft, first_functor);
-    } else {
-      accumulate_psd accumulate_functor(d_buf_time, d_psd, alpha, gamma);
-      thrust::for_each(d_index_ptr, d_index_ptr + nfft, accumulate_functor);
-    }
-
-    std::cout << "test end" << std::endl;
-  }
-
-  if(api == UNIFIED) {
-    //  apply window
-    for (i = 0; i < window_len; i++) {
-      buf_time[i].x = rc[i].real() * w[i];
-      buf_time[i].y = rc[i].imag() * w[i];
-    }
-    // execute fft on buf_time and store in buf_freq
-    checkCudaErrors(cufftExecC2C(fft, (cufftComplex*)buf_time, (cufftComplex*)buf_freq, CUFFT_FORWARD));
-    cudaDeviceSynchronize();
-
-    // accumulate output
-    for (i = 0; i < nfft; i++) {
-      std::complex<float> freq((float)buf_freq[i].x, (float)buf_freq[i].y);
-      std::complex<float> confj((float)buf_freq[i].x, (float)buf_freq[i].y * -1);
-      std::complex<float> t = freq * confj;
-      float v = t.real();
-      if (num_transforms == 0)
-        psd[i] = v;
-      else
-        psd[i] = gamma * psd[i] + alpha * v;
-    }
+  //  accumulate output in gpu
+  thrust::device_ptr<uint64_t> d_index_ptr = thrust::device_pointer_cast(d_index);
+  if(num_transforms == 0) {
+    first_psd first_functor(d_buf_time, d_psd);
+    thrust::for_each(d_index_ptr, d_index_ptr + nfft, first_functor);
+  } else {
+    accumulate_psd accumulate_functor(d_buf_time, d_psd, alpha, gamma);
+    thrust::for_each(d_index_ptr, d_index_ptr + nfft, accumulate_functor);
   }
 
   num_transforms++;
@@ -373,29 +312,14 @@ void CudaSpGramCF::step() {
 }
 
 void CudaSpGramCF::get_psd(float* _X) {
-
-	std::cout << "get psd "<< std::endl;
-  // compute magnitude in dB and run FFT shift
+  // compute magnitude in dB and run FFT shift in GPU
   float scale = accumulate ? -10 * log10f(num_transforms) : 0.0f;
-  // TODO: adjust scale if infinite integration
+  thrust::device_ptr<uint64_t> d_index_ptr = thrust::device_pointer_cast(d_index);
+  calc_power_and_shift calc_power_and_shift_functor(d_psd, d_psd_out, scale, nfft);
+  thrust::for_each(d_index_ptr, d_index_ptr + nfft, calc_power_and_shift_functor);
 
-  if(api == DEVICE_MAPPED) {
-    thrust::device_ptr<uint64_t> d_index_ptr = thrust::device_pointer_cast(d_index);
-    calc_power_and_shift calc_power_and_shift_functor(d_psd, d_psd_out, scale, nfft);
-    thrust::for_each(d_index_ptr, d_index_ptr + nfft, calc_power_and_shift_functor);
-
-    //copy from device to output
-    checkCudaErrors(cudaMemcpy(_X, d_psd_out, sizeof(float) * nfft, cudaMemcpyDeviceToHost));
-  }
-
-  if(api == UNIFIED) {
-    unsigned int i;
-    unsigned int nfft_2 = nfft / 2;
-    for (i = 0; i < nfft; i++) {
-      unsigned int k = (i + nfft_2) % nfft;
-      _X[i] = 10 * log10f(psd[k] + 1e-6f) + scale;
-    }
-  }
+  //copy from device to output
+  checkCudaErrors(cudaMemcpy(_X, d_psd_out, sizeof(float) * nfft, cudaMemcpyDeviceToHost));
 }
 
 int CudaSpGramCF::export_gnuplot(const char* _filename) {

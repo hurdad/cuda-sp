@@ -17,9 +17,6 @@
 
 class CudaSpGramCF {
  public:
-  // cuda memory api to use
-  enum CudaMemoryAPI_t { DEVICE_MAPPED, UNIFIED};
-
   // create CudaSpGramCF object
   //  _nfft       : FFT size
   //  _wtype      : window type, e.g. LIQUID_WINDOW_HAMMING
@@ -28,8 +25,7 @@ class CudaSpGramCF {
   static CudaSpGramCF* create(unsigned int _nfft,
                               int          _wtype,
                               unsigned int _window_len,
-                              unsigned int _delay,
-                              CudaMemoryAPI_t _api);
+                              unsigned int _delay);
 
   // create default CudaSpGramCF object (Kaiser-Bessel window)
   static CudaSpGramCF* create_default(unsigned int _nfft);
@@ -118,13 +114,10 @@ class CudaSpGramCF {
   float           alpha;          // spectrum smoothing filter: feedforward parameter
   float           gamma;          // spectrum smoothing filter: feedback parameter
   int             accumulate;     // accumulate? or use time-average
-  CudaMemoryAPI_t api;			  // cuda memory api to use
 
   windowcf      			buffer;     // input buffer
-  std::complex<float>* 		d_buffer;	// input buffer device
-  cufftComplex* 			buf_time;   // pointer to input array (allocated)
+  liquid_float_complex* 		d_buffer;	// input buffer device
   cufftComplex* 			d_buf_time; // pointer to input device array (allocated)
-  cufftComplex*  			buf_freq;   // output fft (allocated)
   std::vector<float>        w;      	// tapering window [size: window_len x 1]
   float*              		d_w;		// tapering window device
   cufftHandle 				fft;		// FFT plan
