@@ -21,15 +21,6 @@ struct clear_cufftComplex {
   }
 };
 
-struct clear_liquid_float_complex {
-  __host__    __device__ liquid_float_complex operator()() {
-	liquid_float_complex s;
-	s.imag(0.0f);
-	s.real(0.0f);
-    return s;
-  }
-};
-
 struct clear_float {
   __host__   __device__ float operator()() {
     return 0.0f;
@@ -37,17 +28,11 @@ struct clear_float {
 };
 
 struct apply_window {
-  __host__  __device__ cufftComplex operator()(liquid_float_complex s, float w) {
+  __host__  __device__ cufftComplex operator()(cufftComplex s, float w) {
     cufftComplex v;
-    v.x = s.real() * w;
-    v.y = s.imag() * w;
+    v.x = s.x * w;
+    v.y = s.y * w;
     return v;
-  }
-};
-
-struct printf_liquid_float_complex {
-  __host__ __device__ void operator()(liquid_float_complex s) {
-    printf("%.6f - %.6f\n", s.real(), s.imag());
   }
 };
 

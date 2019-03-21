@@ -116,7 +116,7 @@ class CudaSpGramCF {
   int             accumulate;     // accumulate? or use time-average
 
   windowcf      			buffer;     // input buffer
-  liquid_float_complex* 		d_buffer;	// input buffer device
+  cufftComplex* 		    d_buffer;	// input buffer device
   cufftComplex* 			d_buf_time; // pointer to input device array (allocated)
   std::vector<float>        w;      	// tapering window [size: window_len x 1]
   float*              		d_w;		// tapering window device

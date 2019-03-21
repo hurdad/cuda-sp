@@ -22,7 +22,7 @@ void generate_signal(std::complex<float>* signal, const int N) {
 static void cuda_spgram(benchmark::State& state) {
   int N = state.range(0);
 
-  CudaSpGramCF* q = CudaSpGramCF::create(N, LIQUID_WINDOW_BLACKMANHARRIS7, N, N, CudaSpGramCF::DEVICE_MAPPED);
+  CudaSpGramCF* q = CudaSpGramCF::create(N, LIQUID_WINDOW_BLACKMANHARRIS7, N, N);
 
   std::vector<std::complex<float>> signal(N * DATA_MULTIPLIER);
   generate_signal(signal.data(), N * DATA_MULTIPLIER);

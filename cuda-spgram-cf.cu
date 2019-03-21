@@ -46,7 +46,7 @@ CudaSpGramCF* CudaSpGramCF::create(unsigned int _nfft,
   q->set_alpha(-1.0f);
 
   // create input cuda buffers on GPU
-  checkCudaErrors(cudaMalloc((void**)&q->d_buffer, sizeof(std::complex<float>) * q->window_len));
+  checkCudaErrors(cudaMalloc((void**)&q->d_buffer, sizeof(cufftComplex) * q->window_len));
   checkCudaErrors(cudaMalloc((void**)&q->d_buf_time, sizeof(cufftComplex) * q->nfft));
 
   // create psd that hold accumulated fft results
@@ -154,8 +154,8 @@ CudaSpGramCF::~CudaSpGramCF() {
 }
 
 void CudaSpGramCF::clear() {
-  thrust::device_ptr<liquid_float_complex> d_buffer_ptr = thrust::device_pointer_cast(d_buffer);
-  thrust::generate(d_buffer_ptr, d_buffer_ptr + window_len, clear_liquid_float_complex());
+  thrust::device_ptr<cufftComplex> d_buffer_ptr = thrust::device_pointer_cast(d_buffer);
+  thrust::generate(d_buffer_ptr, d_buffer_ptr + window_len, clear_cufftComplex());
 
   thrust::device_ptr<cufftComplex> d_buf_time_ptr = thrust::device_pointer_cast(d_buf_time);
   thrust::generate(d_buf_time_ptr, d_buf_time_ptr + nfft, clear_cufftComplex());
@@ -286,10 +286,10 @@ void CudaSpGramCF::step() {
   windowcf_read(buffer, &rc);
 
   // copy windowcf buffer to gpu
-  checkCudaErrors(cudaMemcpy(d_buffer, rc, sizeof(liquid_float_complex) * window_len, cudaMemcpyHostToDevice));
+  checkCudaErrors(cudaMemcpy(d_buffer, rc, sizeof(cufftComplex) * window_len, cudaMemcpyHostToDevice));
 
   //apply window in gpu
-  thrust::device_ptr<liquid_float_complex> d_buffer_ptr = thrust::device_pointer_cast(d_buffer);
+  thrust::device_ptr<cufftComplex> d_buffer_ptr = thrust::device_pointer_cast(d_buffer);
   thrust::device_ptr<float> d_w_ptr = thrust::device_pointer_cast(d_w);
   thrust::device_ptr<cufftComplex> d_buf_time_ptr = thrust::device_pointer_cast(d_buf_time);
   thrust::transform(d_buffer_ptr, d_buffer_ptr + window_len, d_w_ptr, d_buf_time_ptr, apply_window());

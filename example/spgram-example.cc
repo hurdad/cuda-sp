@@ -68,8 +68,8 @@ int main() {
   printf("total_num_transforms_total : %" PRIu64 "\n", q->get_num_transforms_total());
 
   // create liquid spectral periodogram
-  spgramcf qq = spgramcf_create_default(nfft);
-  //spgramcf qq = spgramcf_create(nfft, LIQUID_WINDOW_BLACKMANHARRIS7, nfft, nfft);
+  //spgramcf qq = spgramcf_create_default(nfft);
+  spgramcf qq = spgramcf_create(nfft, LIQUID_WINDOW_BLACKMANHARRIS7, nfft, nfft);
   spgramcf_print(qq);
 
   // start timer liquid
